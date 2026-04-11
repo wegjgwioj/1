@@ -21,3 +21,4 @@ paramiko==3.4.0
 pyspark==3.5.1
 pycryptodome==3.23.0
 lxml==6.0.2
+cssselect==1.4.0
