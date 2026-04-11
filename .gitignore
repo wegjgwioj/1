@@ -1,0 +1,39 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local environment files
+.env
+
+# Logs
+*.log
+*.out
+runserver.out
+runserver.err
+
+# IDE / OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Frontend build artifacts
+templates/front/admin/node_modules/
+templates/front/admin/dist/
+templates/front/admin/vite.out
+
+# Local uploads / generated assets
+media/
+
+# Local thesis / dataset files
+docs/待提交/*.docx
+docs/待提交/*.xlsx
+
+# Secrets
+util/alipay_key/*.txt

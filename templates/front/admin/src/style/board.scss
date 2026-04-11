@@ -1,0 +1,778 @@
+
+.board{
+  overflow: auto;
+  flex-direction: column;
+  align-content: flex-start;
+  background: url(http://codegen.caihongy.cn/20251121/c15b4c95ae8d4a69bf755f7c2c4e860b.png) no-repeat bottom center,#050505;
+  display: flex;
+  width: 100%;
+  position: relative;
+  height: 100%;
+
+
+  .header{
+    padding: 25px 0 0;
+    margin: 0;
+    background: url(http://codegen.caihongy.cn/20251018/844298f20ef741c5a423d43b1b91e808.png) no-repeat center center;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    position: relative;
+    height: 80px;
+
+    .title{
+      margin: 0;
+      background: linear-gradient(#7efafc, #005559) padding-box text;
+      font-weight: 700;
+      font-size: 20px;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+    }
+  }
+
+  .time{
+    color: #7efafc;
+    top: 50px;
+    display: flex;
+    font-size: 16px;
+    align-items: center;
+    position: absolute;
+    right: 40px;
+    .el-button.is-text{
+      color: inherit  ;
+    }
+    .el-button.is-text:not(.is-disabled):hover{
+      background-color: #7b7b7b3d;
+    }
+  }
+
+  .wrapper{
+    padding: 6px;
+    flex: auto;
+    background: none;
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    height: 0;
+  }
+
+  .left{
+    padding: 0;
+    flex-direction: column;
+    display: flex;
+    gap: 10px;
+    width: 25%;
+  }  
+
+  .center{
+    padding: 0;
+    flex-direction: column;
+    display: flex;
+    width: calc(50% - 40px);
+  }  
+
+  .right{
+    padding: 0;
+    flex-direction: column;
+    display: flex;
+    gap: 10px;
+    width: 25%;
+    flex-wrap: wrap;
+  }
+
+  .img-wrapper{
+    overflow: hidden;
+    display: flex;
+    width: 100%;
+    font-size: 14px;
+    flex-wrap: wrap;
+    height: calc(100% - 40px);
+  
+    .item{
+    padding: 5px;
+    margin: 0 auto;
+    background: none;
+    width: 23%;
+    }
+    
+    .img{
+    border-radius: 4px;
+    object-fit: cover;
+    width: 100%;
+    height: 100px;
+    }
+
+    .title1{
+    color: #fff;
+    }
+
+    .title2{
+    color: #fff;
+    }
+
+    .title3{
+    color: #fff;
+    }
+
+    .title4{
+    color: #fff;
+    }
+
+    .title5{
+    color: #fff;
+    }
+
+  }
+
+  .el-table {
+    .table-image {
+      height: 40px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+  }
+  .el-table {
+    height: 100%;
+    background: none;
+    color: #fff;
+
+    tr {
+      background: none;
+    }
+
+    th.el-table__cell {
+      background: none;
+      background: none;
+    }
+
+  td.el-table__cell,
+  th.el-table__cell.is-leaf {
+    border-bottom: 1px solid #03bbff4d;
+  }
+  .el-table__inner-wrapper::before {
+    background: none;
+  }     
+
+    thead{
+    }
+  }
+
+  .el-table--enable-row-hover .el-table__body tr:hover>td.el-table__cell {
+    background: none;
+    transition: none;
+  }
+
+  .ant-empty-normal .ant-empty-description{
+    color: #fff;
+  }
+
+
+  .chart-box{
+    width: 100%;
+    height: 100%;
+  }
+	
+	.map { 
+    margin: 0;
+    color: #fff;
+    background: none;
+    flex: 2 2 auto;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    height: 0;
+    order: 2;
+	}
+
+  .char-wrapper-1{
+    padding: 8px 0 0 0;
+    margin: 0;
+    flex-direction: column;
+    flex: auto;
+    display: flex;
+    width: 100%;
+    transition: 0.3s;
+    height: 0;
+
+    .title{
+      padding: 0;
+      margin: 0;
+      background: none;
+      flex: none;
+      width: 100%;
+      text-align: center;
+      height: auto;
+    }
+
+    .text{
+      padding: 0;
+      color: #fff;
+      background: url(http://codegen.caihongy.cn/20251018/c5d2916554c547c1a1b30d7f90215778.png) no-repeat center / 100% 100%;
+      font-weight: 600;
+      font-size: 18px;
+      line-height: 40px;
+      text-align: center;
+      height: 40px;
+    }
+    .chart-wrapper{
+      flex: auto;
+      width: 100%;
+      height: 0;
+    }
+  }  
+
+  .char-wrapper-2{
+    padding: 8px 0 0 0;
+    margin: 0;
+    flex-direction: column;
+    background: none;
+    flex: auto;
+    display: flex;
+    width: 100%;
+    transition: 0.3s;
+    height: 0;
+
+    .title{
+      padding: 0;
+      margin: 0;
+      background: none;
+      flex: none;
+      width: 100%;
+      text-align: center;
+      height: auto;
+    }
+
+    .text{
+      padding: 0;
+      color: #fff;
+      background: url(http://codegen.caihongy.cn/20251018/c5d2916554c547c1a1b30d7f90215778.png) no-repeat center / 100% 100%;
+      font-weight: 600;
+      font-size: 18px;
+      line-height: 40px;
+      text-align: center;
+      height: 40px;
+    }
+    .chart-wrapper{
+      flex: auto;
+      width: 100%;
+      height: 0;
+    }
+  }  
+
+  .char-wrapper-3{
+    padding: 8px 0 0 0;
+    margin: 0;
+    flex-direction: column;
+    background: none;
+    flex: auto;
+    display: flex;
+    width: 100%;
+    transition: 0.3s;
+    height: 0;
+
+    .title{
+      padding: 0;
+      margin: 0;
+      background: none;
+      flex: none;
+      width: 100%;
+      text-align: center;
+      height: auto;
+    }
+
+    .text{
+      padding: 0;
+      color: #fff;
+      background: url(http://codegen.caihongy.cn/20251018/c5d2916554c547c1a1b30d7f90215778.png) no-repeat center / 100% 100%;
+      font-weight: 600;
+      font-size: 18px;
+      line-height: 40px;
+      text-align: center;
+      height: 40px;
+    }
+    .chart-wrapper{
+      flex: auto;
+      width: 100%;
+      height: 0;
+    }
+  }  
+
+  .char-wrapper-4{
+    padding: 8px 0 0 0;
+    margin: 0;
+    flex-direction: column;
+    background: none;
+    flex: auto;
+    display: flex;
+    width: 100%;
+    transition: 0.3s;
+    height: 0;
+    order: 3;
+
+    .title{
+      padding: 0;
+      margin: 0;
+      background: none;
+      flex: none;
+      width: 100%;
+      text-align: center;
+      height: auto;
+    }
+
+    .text{
+      padding: 0;
+      color: #fff;
+      background: url(http://codegen.caihongy.cn/20251018/c5d2916554c547c1a1b30d7f90215778.png) no-repeat center / 100% 100%;
+      font-weight: 600;
+      font-size: 18px;
+      line-height: 40px;
+      text-align: center;
+      height: 40px;
+    }
+    .chart-wrapper{
+      flex: auto;
+      width: 100%;
+      height: 0;
+    }
+  }
+
+  .char-wrapper-5{
+    padding: 8px 0 0 0;
+    margin: 0;
+    flex-direction: column;
+    background: none;
+    flex: auto;
+    display: flex;
+    width: 100%;
+    transition: 0.3s;
+    height: 0;
+    order: 3;
+
+    .title{
+      padding: 0;
+      margin: 0;
+      background: none;
+      flex: none;
+      width: 100%;
+      text-align: center;
+      height: auto;
+    }
+
+    .text{
+      padding: 0;
+      color: #fff;
+      background: url(http://codegen.caihongy.cn/20251018/c5d2916554c547c1a1b30d7f90215778.png) no-repeat center / 100% 100%;
+      font-weight: 600;
+      font-size: 18px;
+      line-height: 40px;
+      text-align: center;
+      height: 40px;
+    }
+    .chart-wrapper{
+      flex: auto;
+      width: 100%;
+      height: 0;
+    }
+  }
+
+  .char-wrapper-6{
+    padding: 8px 0 0 0;
+    margin: 0;
+    flex-direction: column;
+    background: none;
+    flex: auto;
+    display: flex;
+    width: 100%;
+    transition: 0.3s;
+    height: 0;
+    order: 3;
+
+    .title{
+      padding: 0;
+      margin: 0;
+      background: none;
+      flex: none;
+      width: 100%;
+      text-align: center;
+      height: auto;
+    }
+
+    .text{
+      padding: 0;
+      color: #fff;
+      background: url(http://codegen.caihongy.cn/20251018/c5d2916554c547c1a1b30d7f90215778.png) no-repeat center / auto 100%;
+      font-weight: 600;
+      font-size: 18px;
+      line-height: 40px;
+      text-align: center;
+      height: 40px;
+    }
+    .chart-wrapper{
+      flex: auto;
+      width: 100%;
+      height: 0;
+    }
+  }
+
+
+
+
+
+  .statis-wrapper{
+      padding: 0;
+      margin: 0;
+      color: #fff;
+      display: flex;
+      font-size: 14px;
+      align-content: center;
+      background: none;
+      gap: 10px;
+      width: 100%;
+      justify-content: center;
+      align-items: center;
+      height: 90px;
+      order: 1;
+  }
+
+  .statis-1{
+    padding: 6px 0;
+    margin: 0;
+    display: flex;
+    filter: none;
+    flex-direction: column;
+    max-width: 200px;
+    background: url(http://codegen.caihongy.cn/20251018/6439dcd1445241cfbc1d130e26f52788.png) no-repeat center top / 100% 100%;
+    flex: 1 1 auto;
+    width: 150px;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    height: auto;
+
+    .block{
+    margin: 0 0 0 20px;
+    background: #2097db;
+    display: none;
+    width: 12px;
+    height: 12px;
+    }
+
+    .info{
+    padding: 0;
+    flex-direction: column;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    }
+
+    .title{
+    color: inherit;
+    font-size: inherit;
+    line-height: 24px;
+    height: 24px;
+    }
+
+    .num{
+    color: #00aaef;
+    font-weight: bold;
+    font-size: 24px;
+    line-height: 36px;
+    height: 36px;
+    order: 20;
+    }
+  }
+
+  .statis-2{
+    padding: 6px 0;
+    margin: 0;
+    display: flex;
+    filter: none;
+    flex-direction: column;
+    max-width: 200px;
+    background: url(http://codegen.caihongy.cn/20251018/6439dcd1445241cfbc1d130e26f52788.png) no-repeat center top / 100% 100%;
+    flex: 1 1 auto;
+    width: 150px;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    height: auto;
+
+    .block{
+    margin: 0 0 0 20px;
+    background: #2097db;
+    display: none;
+    width: 12px;
+    height: 12px;
+    }
+
+    .info{
+    padding: 0;
+    flex-direction: column;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    }
+
+    .title{
+    color: inherit;
+    font-size: inherit;
+    line-height: 24px;
+    height: 24px;
+    }
+
+    .num{
+    color: #00aaef;
+    font-weight: bold;
+    font-size: 24px;
+    line-height: 36px;
+    height: 36px;
+    order: 20;
+    }
+  }
+
+  .statis-3{
+    padding: 6px 0;
+    margin: 0;
+    display: flex;
+    filter: none;
+    flex-direction: column;
+    max-width: 200px;
+    background: url(http://codegen.caihongy.cn/20251018/6439dcd1445241cfbc1d130e26f52788.png) no-repeat center top / 100% 100%;
+    flex: 1 1 auto;
+    width: 150px;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    height: auto;
+
+    .block{
+    margin: 0 0 0 20px;
+    background: #2097db;
+    display: none;
+    width: 12px;
+    height: 12px;
+    }
+
+    .info{
+    padding: 0;
+    flex-direction: column;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    }
+
+    .title{
+    color: inherit;
+    font-size: inherit;
+    line-height: 24px;
+    height: 24px;
+    }
+
+    .num{
+    color: #00aaef;
+    font-weight: bold;
+    font-size: 24px;
+    line-height: 36px;
+    height: 36px;
+    order: 20;
+    }
+  }
+
+  .statis-4{
+    padding: 6px 0;
+    margin: 0;
+    display: flex;
+    filter: none;
+    flex-direction: column;
+    max-width: 200px;
+    background: url(http://codegen.caihongy.cn/20251018/6439dcd1445241cfbc1d130e26f52788.png) no-repeat center top / 100% 100%;
+    flex: 1 1 auto;
+    width: 150px;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    height: auto;
+
+    .block{
+    margin: 0 0 0 20px;
+    background: #2097db;
+    display: none;
+    width: 12px;
+    height: 12px;
+    }
+
+    .info{
+    padding: 0;
+    flex-direction: column;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    }
+
+    .title{
+    color: inherit;
+    font-size: inherit;
+    line-height: 24px;
+    height: 24px;
+    }
+
+    .num{
+    color: #00aaef;
+    font-weight: bold;
+    font-size: 24px;
+    line-height: 36px;
+    height: 36px;
+    order: 20;
+    }
+  }
+
+  .statis-5{
+    padding: 6px 0;
+    margin: 0;
+    display: flex;
+    filter: none;
+    flex-direction: column;
+    max-width: 200px;
+    background: url(http://codegen.caihongy.cn/20251018/6439dcd1445241cfbc1d130e26f52788.png) no-repeat center top / 100% 100%;
+    flex: 1 1 auto;
+    width: 150px;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    height: auto;
+
+    .block{
+    margin: 0 0 0 20px;
+    background: #2097db;
+    display: none;
+    width: 12px;
+    height: 12px;
+    }
+
+    .info{
+    padding: 0;
+    flex-direction: column;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    }
+
+    .title{
+    color: inherit;
+    font-size: inherit;
+    line-height: 24px;
+    height: 24px;
+    }
+
+    .num{
+    color: #00aaef;
+    font-weight: bold;
+    font-size: 24px;
+    line-height: 36px;
+    height: 36px;
+    order: 20;
+    }
+  }
+
+  .forecast-box{
+    padding: 0 20px 0 10px;
+    margin: 0;
+    display: flex;
+    transition: 0.3s;
+    flex-wrap: wrap;
+    flex-direction: row;
+    overflow: hidden auto;
+    background: none;
+    flex: 0 0 auto;
+    gap: 10px;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    height: auto;
+    order: 5;
+
+    .item{
+      margin: 0;
+      color: #fff;
+      flex: none;
+      display: flex;
+      width: 100%;
+      align-items: center;
+    }
+
+    .label{
+      color: inherit;
+      display: none;
+      width: 80px;
+      text-align: right;
+    }
+
+    .input{
+      border: 1px solid #00aaef;
+      border-radius: 6px;
+      padding: 0 10px;
+      margin: 0 0 0 10px;
+      color: inherit;
+      background: none;
+      flex: auto;
+      width: 80px;
+      line-height: 30px;
+      height: 30px;
+    }
+
+    .text{
+      color: #00aaef;
+      width: 100%;
+      font-size: 16px;
+      line-height: 40px;
+      text-align: center;
+    }
+
+    .btn{
+      border: 1px solid #00aaef;
+      cursor: pointer;
+      border-radius: 5px;
+      margin: 0;
+      color: #00aaef;
+      background: none;
+      width: calc(33.33% - 8px);
+      line-height: 34px;
+      text-align: center;
+      height: 34px;
+    }
+
+  }
+}
+
+.chart-wrapper {
+  position: relative;
+  .query-icon {
+    position: absolute;
+    right: 10px;
+    top: -32px;
+    z-index: 99;
+  }
+}
+.echart-board {
+  .el-select {
+    width: 100%;
+    --el-fill-color-blank: transparent;
+  }
+  .el-range-editor.el-input__wrapper {
+    max-width: 100%;
+  }
+  .el-input__wrapper {
+    background-color: transparent;
+  }
+}

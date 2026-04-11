@@ -1,0 +1,263 @@
+/* 页面盒子 */
+.layout-page {
+  background-color: #F0F3F9;
+  min-height: 100vh;
+  margin-top: -30px;
+
+  /* 头部 */
+  .header-wrapper {
+    position: fixed;
+    top: 0px;
+    right: 0px;
+    /* width: calc(100% - 224px); */
+    width: calc(100% - 140px);
+    height: 60px;
+    padding: 0 20px;
+    display: flex;
+    gap: 10px;
+    font-size: 14px;
+    z-index: 202;
+    background: #fff;
+    box-shadow: 0px 3px 10px 1px rgba(0, 0, 0, 0.05);
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      color: #1B2871;
+      font-size: 26px;
+      font-weight: bold;
+    }
+
+    .right {
+      flex: 1;
+      display: flex;
+      justify-content: flex-end;
+      color: #000000;
+
+      .notice {
+        width: auto;
+        height: 100%;
+        order: 1;
+
+        img {
+          width: 24px;
+          height: 24px;
+          margin: 0 15px;
+        }
+      }
+
+      .rolemenus img {
+        width: 24px;
+        height: 24px;
+      }
+    }
+  }
+
+  .weather {
+    img {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  /* 菜单 */
+  .menu-wrapper {
+    position: fixed;
+    left: 0px;
+    width: 140px;
+    top: 0px;
+    height: 100%;
+    overflow: hidden;
+    z-index: 201;
+    border-width: 0 !important;
+    border-style: solid;
+    border-color: #F9A39B;
+    background: #2062D2;
+
+    .header-title2 {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      .title {
+        display: none;
+      }
+    }
+
+
+    /* 一级菜单栏 */
+    & .el-menu {
+      background: #2062D2;
+
+      .el-menu-item {
+
+        /* background: red; */
+        color: #FFFFFF;
+        font-size: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center !important;
+        height: 120px !important;
+        padding: 25px 0 10px 0 !important;
+        border-width: 1px 0 0 0;
+        border-style: solid;
+        border-color: #0C4DB9;
+      }
+
+      .el-menu-item .el-icon {
+        font-size: 32px;
+        background: inherit;
+        color: inherit;
+        width: 100%;
+      }
+
+      .el-menu-item span {
+        width: 100%;
+        display: block !important;
+        text-align: center;
+      }
+
+      .el-menu-item:hover,
+      .el-menu-item :focus,
+      .el-menu-item .is-active {
+        background: url(http://codegen.caihongy.cn/20251120/8bfb3491cdb94da99742339bdeae484b.png) no-repeat center center / 100% 100% !important;
+        color: #FEFEFE !important;
+      }
+    }
+
+    /* 二级菜单栏  父级*/
+    .el-sub-menu {
+      border-width: 1px 0 0 0;
+      border-style: solid;
+      border-color: #0C4DB9;
+
+    }
+
+
+    .el-sub-menu__title {
+      color: #FFFFFF;
+      font-size: 16px;
+      display: flex;
+      flex-direction: column;
+      height: auto !important;
+      align-items: center;
+      min-height: 120px !important;
+      padding: 25px 0 10px 0 !important;
+
+
+      .el-sub-menu .el-icon {
+        font-size: 32px;
+        background: inherit;
+        color: inherit;
+        width: 100%;
+      }
+
+      .el-sub-menu span {
+        width: 100%;
+        display: block !important;
+        text-align: center;
+      }
+    }
+
+    .el-sub-menu__title:hover,
+    .el-sub-menu__title:focus,
+    .el-sub-menu__title .is-active {
+      background: url(http://codegen.caihongy.cn/20251120/8bfb3491cdb94da99742339bdeae484b.png) no-repeat center center / 100% 100% !important;
+      color: #FEFEFE !important;
+    }
+
+  }
+
+  .el-menu--inline {
+    background: none !important;
+    text-align: left !important;
+  }
+
+  /* 内容区  */
+  .main-wrapper {
+    padding: 10px 0;
+    margin-top: 90px;
+    margin-left: 140px;
+    overflow: hidden;
+
+    .header2-wrapper {
+      padding: 0 20px;
+      display: flex;
+      border-width: 0 !important;
+      gap: 20px;
+
+
+
+    }
+
+    /* 首页 */
+    .content-wrapper {
+      width: 100%;
+      overflow: hidden;
+      padding: 20px 0;
+    }
+  }
+
+  /* 过渡动画 */
+  .transiton_1 {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(.4, 0, 1, 1);
+    transition-duration: .3s;
+  }
+}
+
+/* 这两个动画类名不能变，keyframes样式可以修改 */
+.animate__fadeSlideIn {
+  animation-name: fadeSlideIn;
+}
+
+.animate__fadeSlidOut {
+  animation-name: fadeSlideOut;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    transform: translate3d(-30px, 0, 0);
+    visibility: visible;
+    opacity: 0;
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fadeSlideOut {
+  from {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    visibility: hidden;
+    opacity: 0;
+    transform: translate3d(30px, 0, 0);
+  }
+}
+
+.rolemenus {
+  order: 2;
+
+  .name {
+    display: block !important;
+    font-size: 14px;
+    color: #111827 !important;
+  }
+}
+
+.el-sub-menu__title .el-icon:first-child {
+  font-size: 32px;
+}
+
+.menu-wrapper {
+  & .menu-item {
+    &.act {
+      background: red;
+    }
+  }
+}

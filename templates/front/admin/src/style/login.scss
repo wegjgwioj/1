@@ -1,0 +1,269 @@
+/* 定义全局主题变量 */
+:root {
+  /* 主色-按钮 */
+  --btn-bg-color-: #FFF;
+  --btn-bg-hover-color-: #7242eb;
+  --btn-font-color-: #FFF;
+  --btn-font-hover-color-: #FFF;
+
+  /* 副色-按钮 */
+  --btn2-bg-color-: #FAFAFA;
+  --btn2-bg-hover-color-: #d4d4d4;
+  --btn2-font-color-: #333333;
+  --btn2-font-hover-color-: #333333;
+}
+
+.login {
+  background: url(http://codegen.caihongy.cn/20251209/ae706604bc7d4c83b95238e2c6d2b2ce.jpg) no-repeat right center / cover;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+
+  /* 表单盒子 */
+  .loginform {
+    width: 655px;
+    height: auto;
+    padding: 20px 0;
+    font-size: 16px;
+    margin-left: 96px;
+  }
+
+  /* 媒体查询 */
+  @media screen and (max-width: 768px) {
+    .loginform {
+      width: 100%;
+    }
+  }
+
+  .logo {
+    display: none;
+    position: fixed;
+    left: 46%;
+    top: 0;
+
+    img {
+      height: 80px;
+    }
+  }
+
+  /* 表单盒子：二级 */
+  .loginform-wrapper {
+    padding: 0;
+    width: 100%;
+    height: auto;
+    display: flex;
+    flex-wrap: wrap;
+
+  }
+
+  /* 标题 */
+  .login-tip {
+    display: none;
+    padding: 0;
+    color: #1B2871;
+    font-weight: bold;
+    font-size: 50px;
+    text-align: center;
+    margin-bottom: 20px;
+    width: 100%;
+    order: 2;
+
+  }
+
+  /* 标题 */
+  .title-box {
+    width: 100%;
+    padding: 0;
+    color: #1B2871;
+    font-weight: bold;
+    font-size: 24px;
+    text-align: center;
+    margin-bottom: 20px;
+    order: 1;
+
+  }
+
+  .inner-wrapper {
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    order: 3;
+  }
+
+  /* 表单项 */
+  .el-form-item {
+    order: 3;
+    border-radius: 0;
+    padding: 0;
+    margin: 15px 0;
+    width: 100%;
+    height: auto;
+  }
+
+  /* 提示语 */
+  .el-select__placeholder {
+    color: #C3C7CC !important;
+  }
+
+  .el-input__inner::placeholder {
+    color: #C3C7CC !important;
+
+  }
+
+  .el-input__wrapper {
+    background: none;
+    border: 0 !important;
+    padding: 0 !important;
+    display: flex;
+  }
+
+  /* 输入框  */
+  .el-input__inner {
+    color: #C3C7CC;
+    width: 100%;
+    padding: 1px 11px;
+  }
+
+
+  /* 标签 */
+  .el-form-item__label {
+    color: #fff;
+  }
+
+  /* 通用输入框 */
+  .el-form-item__content {
+    line-height: 48px;
+  }
+
+  /* 文本框 */
+  .el-input {
+    --el-input-height: 48px;
+    font-size: 18px;
+    border-radius: 0;
+
+  }
+
+  /* 下拉 */
+  .el-form-item__content .el-input__wrapper,
+  .el-form-item__content .el-select__wrapper,
+  .el-textarea__inner,
+  .ql,
+  .el-select {
+    line-height: 48px;
+    height: 48px;
+    font-size: 18px;
+    color: #C3C7CC;
+    width: 100%;
+    background: #FFFFFF;
+    border: 1px solid #DADFE6 !important;
+    border-radius: 14px;
+  }
+
+
+  /* 验证码 */
+  .code {
+    .el-form-item__content {
+      flex-wrap: nowrap;
+      font-size: 18px;
+    }
+
+    .code-box {
+      cursor: pointer;
+      margin: 0 0 0 10px;
+      display: flex;
+      border-radius: 6px;
+      flex: 0 0 auto;
+      background: #5B73EF;
+      width: 120px;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+      gap: 4px;
+    }
+
+  }
+
+  /* 注册按钮盒子 */
+  .register-box {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    gap: 30px;
+    justify-content: flex-start;
+    height: auto;
+    flex-wrap: wrap;
+
+  }
+
+  .registerbox-login {
+    order: 4;
+    flex: 1;
+
+    .item {
+      text-decoration: underline;
+      cursor: pointer;
+      color: #000000;
+      font-weight: 400;
+    }
+        & .item {
+        &:hover {
+        color: #2062D2;
+          text-decoration: underline;
+        }
+    }
+  }
+
+  .face-forget-wrapper {
+    display: flex;
+    padding: 10px 0;
+    order: 4;
+    width: 100%;
+    justify-content: space-between;
+
+    .forget-btn span {
+      color: #0D1818;
+    }
+
+    .face-btn span {
+      text-decoration: underline;
+      cursor: pointer;
+      color: #000000;
+    }
+
+    .email-btn span {
+      text-decoration: underline;
+      cursor: pointer;
+      color: #000000;
+    }
+  }
+
+
+
+  /* 登录按钮 */
+  .login-btn {
+    order: 4;
+    border: 0px solid transparent;
+    border-radius: 12px;
+    padding: 4px 15px;
+    margin: 20px auto;
+    background: #97CEFA;
+    width: 383px;
+    color: #fff;
+    font-size: 24px;
+    height: 48px;
+
+    &:hover {
+      background: #5B73EF;
+      color: #FFFFFF;
+    }
+  }
+
+  /* 人脸识别 */
+  .forget-btn {
+    order: 6;
+  }
+}

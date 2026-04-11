@@ -1,0 +1,596 @@
+# coding:utf-8
+import base64
+import json
+from importlib import import_module
+from unittest.mock import Mock, patch
+
+from django.apps import apps
+from django.core.management import call_command
+from django.db import connection
+from django.test import Client, TestCase, TransactionTestCase
+
+from dj2.settings import dbName as schemaName
+from .models import drivinglog, user, users
+
+
+class BaseApiTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.front_user = user.objects.create(
+            useraccount="test_user",
+            password="123456",
+            username="测试用户",
+            gender="男",
+            mobilephone="13800000000",
+        )
+        self.admin_user = users.objects.create(
+            username="admin_test",
+            password="123456",
+            role="管理员",
+            image="",
+        )
+        self.log_a = drivinglog.objects.create(
+            vehiclenumber="CAR-001",
+            vehiclemodel="Model-A",
+            batterycapacity=90,
+            batterylife=40,
+            accumulatedmileage=120,
+            drivingroute="机场-酒店高速干线",
+            drivingbehaviorrating=88,
+        )
+        self.log_b = drivinglog.objects.create(
+            vehiclenumber="CAR-002",
+            vehiclemodel="Model-A",
+            batterycapacity=85,
+            batterylife=36,
+            accumulatedmileage=180,
+            drivingroute="机场-酒店高速干线",
+            drivingbehaviorrating=80,
+        )
+        self.log_c = drivinglog.objects.create(
+            vehiclenumber="CAR-003",
+            vehiclemodel="Model-B",
+            batterycapacity=100,
+            batterylife=55,
+            accumulatedmileage=260,
+            drivingroute="东站-西站山区道路",
+            drivingbehaviorrating=60,
+        )
+
+    def api(self, suffix):
+        return f"/{schemaName}/{suffix}"
+
+    def token(self, table_name="user", params=None):
+        payload = {"tablename": table_name, "params": params or {"id": self.front_user.id}}
+        return base64.b64encode(str(payload).encode("utf-8")).decode("utf-8")
+
+    def auth_headers(self, table_name="user", params=None):
+        return {"HTTP_TOKEN": self.token(table_name=table_name, params=params)}
+
+    def get_model_or_fail(self, model_name):
+        try:
+            return apps.get_model("main", model_name)
+        except LookupError:
+            self.fail(f"模型 {model_name} 尚未实现")
+
+
+class ModelSmokeTest(BaseApiTestCase):
+    def test_models_and_fields_exist_for_feature_patch(self):
+        model_names = {model.__name__.lower() for model in apps.get_app_config("main").get_models()}
+        self.assertIn("storeup", model_names)
+        self.assertIn("discussdrivinglog", model_names)
+        self.assertIn("vehicleknowledge", model_names)
+
+        drivinglog_fields = {field.name for field in drivinglog._meta.fields}
+        self.assertIn("storeupnum", drivinglog_fields)
+        self.assertIn("discussnum", drivinglog_fields)
+
+        VehicleKnowledge = self.get_model_or_fail("vehicleknowledge")
+        knowledge_fields = {field.name for field in VehicleKnowledge._meta.fields}
+        self.assertIn("vehiclemodel", knowledge_fields)
+        self.assertIn("summary", knowledge_fields)
+        self.assertIn("crawlstatus", knowledge_fields)
+
+
+class VehicleKnowledgeParserTest(TestCase):
+    def test_extract_vehicle_knowledge_from_baike_like_html(self):
+        module = import_module("util.vehicle_knowledge_crawler")
+        html = """
+        <html>
+          <body>
+            <div class="lemmaSummary_O3o_W J-summary">
+              比亚迪海豹是比亚迪推出的纯电动轿车，主打高续航与智能化配置。
+            </div>
+            <div class="basic-info J-basic-info">
+              <dl>
+                <dt class="basicInfo-item name">所属品牌</dt>
+                <dd class="basicInfo-item value">比亚迪</dd>
+                <dt class="basicInfo-item name">电池类型</dt>
+                <dd class="basicInfo-item value">磷酸铁锂电池</dd>
+                <dt class="basicInfo-item name">CLTC纯电续航</dt>
+                <dd class="basicInfo-item value">700km</dd>
+                <dt class="basicInfo-item name">快充时间</dt>
+                <dd class="basicInfo-item value">0.5小时</dd>
+              </dl>
+            </div>
+          </body>
+        </html>
+        """
+
+        result = module.extract_vehicle_knowledge(
+            html_string=html,
+            vehiclemodel="比亚迪海豹",
+            sourceurl="https://baike.baidu.com/item/比亚迪海豹",
+        )
+
+        self.assertEqual(result["vehiclemodel"], "比亚迪海豹")
+        self.assertIn("纯电动轿车", result["summary"])
+        self.assertEqual(result["manufacturer"], "比亚迪")
+        self.assertEqual(result["batterytype"], "磷酸铁锂电池")
+        self.assertEqual(result["officialrange"], "700km")
+        self.assertEqual(result["chargeinfo"], "0.5小时")
+
+
+class VehicleKnowledgeCrawlFlowTest(BaseApiTestCase):
+    def _mock_response(self, html, url):
+        response = Mock()
+        response.status_code = 200
+        response.text = html
+        response.url = url
+        response.raise_for_status = Mock()
+        return response
+
+    def test_crawl_by_model_upserts_vehicle_knowledge(self):
+        html = """
+        <html>
+          <body>
+            <div class="lemmaSummary_O3o_W J-summary">比亚迪海豹是纯电动轿车。</div>
+            <div class="basic-info J-basic-info">
+              <dl>
+                <dt class="basicInfo-item name">所属品牌</dt>
+                <dd class="basicInfo-item value">比亚迪</dd>
+                <dt class="basicInfo-item name">电池类型</dt>
+                <dd class="basicInfo-item value">磷酸铁锂电池</dd>
+              </dl>
+            </div>
+          </body>
+        </html>
+        """
+        with patch("requests.get", return_value=self._mock_response(html, "https://baike.baidu.com/item/比亚迪海豹")):
+            response = self.client.post(
+                self.api("vehicleknowledge/crawlByModel"),
+                data=json.dumps({"vehiclemodel": "比亚迪海豹"}),
+                content_type="application/json",
+                **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+
+        VehicleKnowledge = self.get_model_or_fail("vehicleknowledge")
+        record = VehicleKnowledge.objects.get(vehiclemodel="比亚迪海豹")
+        self.assertEqual(record.manufacturer, "比亚迪")
+        self.assertEqual(record.batterytype, "磷酸铁锂电池")
+        self.assertEqual(record.crawlstatus, "成功")
+
+        updated_html = """
+        <html>
+          <body>
+            <div class="lemmaSummary_O3o_W J-summary">比亚迪海豹冠军版。</div>
+            <div class="basic-info J-basic-info">
+              <dl>
+                <dt class="basicInfo-item name">所属品牌</dt>
+                <dd class="basicInfo-item value">比亚迪汽车</dd>
+              </dl>
+            </div>
+          </body>
+        </html>
+        """
+        with patch("requests.get", return_value=self._mock_response(updated_html, "https://baike.baidu.com/item/比亚迪海豹")):
+            response = self.client.post(
+                self.api("vehicleknowledge/crawlByModel"),
+                data=json.dumps({"vehiclemodel": "比亚迪海豹"}),
+                content_type="application/json",
+                **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(VehicleKnowledge.objects.filter(vehiclemodel="比亚迪海豹").count(), 1)
+        record.refresh_from_db()
+        self.assertEqual(record.manufacturer, "比亚迪汽车")
+
+    def test_crawl_batch_deduplicates_models_from_drivinglog(self):
+        self.log_a.vehiclemodel = "比亚迪海豹"
+        self.log_a.save(update_fields=["vehiclemodel"])
+        self.log_b.vehiclemodel = "比亚迪海豹"
+        self.log_b.save(update_fields=["vehiclemodel"])
+        self.log_c.vehiclemodel = "特斯拉Model Y"
+        self.log_c.save(update_fields=["vehiclemodel"])
+
+        def side_effect(url, *args, **kwargs):
+            if "比亚迪海豹" in url:
+                return self._mock_response(
+                    """
+                    <html><body>
+                    <div class="lemmaSummary_O3o_W J-summary">海豹简介</div>
+                    <div class="basic-info J-basic-info">
+                      <dl><dt class="basicInfo-item name">所属品牌</dt><dd class="basicInfo-item value">比亚迪</dd></dl>
+                    </div>
+                    </body></html>
+                    """,
+                    url,
+                )
+            return self._mock_response(
+                """
+                <html><body>
+                <div class="lemmaSummary_O3o_W J-summary">Model Y简介</div>
+                <div class="basic-info J-basic-info">
+                  <dl><dt class="basicInfo-item name">所属品牌</dt><dd class="basicInfo-item value">特斯拉</dd></dl>
+                </div>
+                </body></html>
+                """,
+                url,
+            )
+
+        with patch("requests.get", side_effect=side_effect):
+            response = self.client.post(
+                self.api("vehicleknowledge/crawlBatch"),
+                data=json.dumps({}),
+                content_type="application/json",
+                **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+
+        VehicleKnowledge = self.get_model_or_fail("vehicleknowledge")
+        self.assertEqual(VehicleKnowledge.objects.count(), 2)
+        self.assertTrue(VehicleKnowledge.objects.filter(vehiclemodel="比亚迪海豹").exists())
+        self.assertTrue(VehicleKnowledge.objects.filter(vehiclemodel="特斯拉Model Y").exists())
+
+    def test_crawl_by_model_falls_back_to_search_when_baike_forbidden(self):
+        def side_effect(url, *args, **kwargs):
+            if "baike.baidu.com" in url:
+                response = Mock()
+                response.status_code = 403
+                response.text = "<html><title>百度安全验证</title></html>"
+                response.url = url
+                response.raise_for_status = Mock(side_effect=Exception("403 Client Error: Forbidden for url: %s" % url))
+                return response
+            return self._mock_response(
+                """
+                <html>
+                  <body>
+                    <li class="res-list">
+                      <h3><a href="https://baike.so.com/doc/30506231-32301401.html">比亚迪海豹_360百科</a></h3>
+                      <p>比亚迪海豹是比亚迪旗下纯电动汽车，CLTC工况纯电续航里程提供550公里、650公里、700公里。</p>
+                    </li>
+                  </body>
+                </html>
+                """,
+                url,
+            )
+
+        with patch("requests.get", side_effect=side_effect):
+            response = self.client.post(
+                self.api("vehicleknowledge/crawlByModel"),
+                data=json.dumps({"vehiclemodel": "比亚迪海豹"}),
+                content_type="application/json",
+                **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+
+        VehicleKnowledge = self.get_model_or_fail("vehicleknowledge")
+        record = VehicleKnowledge.objects.get(vehiclemodel="比亚迪海豹")
+        self.assertEqual(record.crawlstatus, "成功")
+        self.assertIn("纯电续航", record.summary)
+        self.assertIn("baike.so.com", record.sourceurl)
+
+    def test_crawl_by_model_rejects_irrelevant_search_result(self):
+        def side_effect(url, *args, **kwargs):
+            if "baike.baidu.com" in url:
+                response = Mock()
+                response.status_code = 403
+                response.text = "<html><title>百度安全验证</title></html>"
+                response.url = url
+                response.raise_for_status = Mock(side_effect=Exception("403 Client Error: Forbidden for url: %s" % url))
+                return response
+            return self._mock_response(
+                """
+                <html>
+                  <body>
+                    <li class="res-list">
+                      <h3><a href="https://shopmodela.com/">Modela</a></h3>
+                      <p>handmade in Oaxaca, Mexico. Handwoven mexican rugs and pottery.</p>
+                    </li>
+                  </body>
+                </html>
+                """,
+                url,
+            )
+
+        with patch("requests.get", side_effect=side_effect):
+            response = self.client.post(
+                self.api("vehicleknowledge/crawlByModel"),
+                data=json.dumps({"vehiclemodel": "Model-A"}),
+                content_type="application/json",
+                **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertNotEqual(payload["code"], 0)
+
+        VehicleKnowledge = self.get_model_or_fail("vehicleknowledge")
+        record = VehicleKnowledge.objects.get(vehiclemodel="Model-A")
+        self.assertEqual(record.crawlstatus, "失败")
+
+    def test_crawl_by_model_uses_builtin_demo_fallback_when_public_sources_blocked(self):
+        def side_effect(url, *args, **kwargs):
+            response = Mock()
+            response.status_code = 403 if "baike.baidu.com" in url else 200
+            response.url = url
+            if "baike.baidu.com" in url:
+                response.text = "<html><title>百度安全验证</title></html>"
+                response.raise_for_status = Mock(
+                    side_effect=Exception("403 Client Error: Forbidden for url: %s" % url)
+                )
+            else:
+                response.text = "<html><title>访问异常页面</title></html>"
+                response.raise_for_status = Mock()
+            return response
+
+        with patch("requests.get", side_effect=side_effect):
+            response = self.client.post(
+                self.api("vehicleknowledge/crawlByModel"),
+                data=json.dumps({"vehiclemodel": "比亚迪海豹"}),
+                content_type="application/json",
+                **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+
+        VehicleKnowledge = self.get_model_or_fail("vehicleknowledge")
+        record = VehicleKnowledge.objects.get(vehiclemodel="比亚迪海豹")
+        self.assertEqual(record.crawlstatus, "成功")
+        self.assertTrue(record.summary)
+        self.assertIn("答辩演示", record.sourceurl)
+
+    def test_crawl_by_model_prefers_builtin_demo_data_when_search_result_too_sparse(self):
+        def side_effect(url, *args, **kwargs):
+            if "baike.baidu.com" in url:
+                response = Mock()
+                response.status_code = 403
+                response.text = "<html><title>百度安全验证</title></html>"
+                response.url = url
+                response.raise_for_status = Mock(
+                    side_effect=Exception("403 Client Error: Forbidden for url: %s" % url)
+                )
+                return response
+
+            return self._mock_response(
+                """
+                <html>
+                  <body>
+                    <li class="b_algo">
+                      <h2><a href="https://www.autohome.com.cn/5213/">小鹏P7</a></h2>
+                      <div class="b_caption"><p>小鹏P7是一款热门纯电轿车。</p></div>
+                    </li>
+                  </body>
+                </html>
+                """,
+                url,
+            )
+
+        with patch("requests.get", side_effect=side_effect):
+            response = self.client.post(
+                self.api("vehicleknowledge/crawlByModel"),
+                data=json.dumps({"vehiclemodel": "小鹏P7"}),
+                content_type="application/json",
+                **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+
+        VehicleKnowledge = self.get_model_or_fail("vehicleknowledge")
+        record = VehicleKnowledge.objects.get(vehiclemodel="小鹏P7")
+        self.assertEqual(record.crawlstatus, "成功")
+        self.assertEqual(record.manufacturer, "小鹏汽车")
+        self.assertIn("702km", record.officialrange)
+        self.assertIn("答辩演示", record.sourceurl)
+
+
+class FeatureSchemaSyncCommandTest(TransactionTestCase):
+    def _table_exists(self, table_name):
+        with connection.cursor() as cursor:
+            cursor.execute("SHOW TABLES LIKE %s", [table_name])
+            return cursor.fetchone() is not None
+
+    def test_sync_feature_schema_recreates_missing_vehicleknowledge_table(self):
+        with connection.cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS `vehicleknowledge`")
+
+        self.assertFalse(self._table_exists("vehicleknowledge"))
+
+        call_command("sync_feature_schema", verbosity=0)
+
+        self.assertTrue(self._table_exists("vehicleknowledge"))
+
+
+class DemoDataPrepareCommandTest(BaseApiTestCase):
+    def test_prepare_demo_data_normalizes_models_and_clears_vehicleknowledge(self):
+        self.log_a.vehiclemodel = "Model-A"
+        self.log_a.vehiclenumber = "CAR-001"
+        self.log_a.save(update_fields=["vehiclemodel", "vehiclenumber"])
+
+        self.log_b.vehiclemodel = "M1"
+        self.log_b.vehiclenumber = "C1"
+        self.log_b.save(update_fields=["vehiclemodel", "vehiclenumber"])
+
+        VehicleKnowledge = self.get_model_or_fail("vehicleknowledge")
+        VehicleKnowledge.objects.create(vehiclemodel="Model-A", crawlstatus="成功", summary="old")
+
+        call_command("prepare_demo_data", verbosity=0)
+
+        self.log_a.refresh_from_db()
+        self.log_b.refresh_from_db()
+
+        self.assertEqual(self.log_a.vehiclemodel, "比亚迪海豹")
+        self.assertEqual(self.log_b.vehiclemodel, "五菱宏光MINIEV")
+        self.assertEqual(self.log_b.vehiclenumber, "MINI-001")
+        self.assertEqual(VehicleKnowledge.objects.count(), 0)
+
+
+class StoreupFlowTest(BaseApiTestCase):
+    def test_toggle_storeup_and_sync_counter(self):
+        response = self.client.post(
+            self.api("storeup/toggle"),
+            data=json.dumps({"refid": self.log_a.id, "tablename": "drivinglog"}),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+
+        Storeup = self.get_model_or_fail("storeup")
+        self.assertTrue(
+            Storeup.objects.filter(userid=self.front_user.id, refid=self.log_a.id, tablename="drivinglog").exists()
+        )
+        self.log_a.refresh_from_db()
+        self.assertEqual(getattr(self.log_a, "storeupnum", None), 1)
+
+        response = self.client.post(
+            self.api("storeup/toggle"),
+            data=json.dumps({"refid": self.log_a.id, "tablename": "drivinglog"}),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+
+        self.assertFalse(
+            Storeup.objects.filter(userid=self.front_user.id, refid=self.log_a.id, tablename="drivinglog").exists()
+        )
+        self.log_a.refresh_from_db()
+        self.assertEqual(getattr(self.log_a, "storeupnum", None), 0)
+
+
+class DiscussFlowTest(BaseApiTestCase):
+    def test_add_comment_and_reply_sync_counter(self):
+        response = self.client.post(
+            self.api("discussdrivinglog/add"),
+            data=json.dumps({"refid": self.log_a.id, "content": "这条日志很有参考价值"}),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+
+        DiscussDrivinglog = self.get_model_or_fail("discussdrivinglog")
+        comment = DiscussDrivinglog.objects.get(id=payload["data"])
+        self.assertEqual(comment.userid, self.front_user.id)
+        self.assertEqual(comment.content, "这条日志很有参考价值")
+
+        self.log_a.refresh_from_db()
+        self.assertEqual(getattr(self.log_a, "discussnum", None), 1)
+
+        reply_payload = json.dumps(
+            [
+                {
+                    "id": 1,
+                    "userid": self.admin_user.id,
+                    "nickname": "管理员",
+                    "avatarurl": "",
+                    "content": "收到，感谢反馈",
+                    "addtime": "2026-04-11 10:00:00",
+                }
+            ],
+            ensure_ascii=False,
+        )
+        response = self.client.post(
+            self.api("discussdrivinglog/update"),
+            data=json.dumps({"id": comment.id, "reply": reply_payload}),
+            content_type="application/json",
+            **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+
+        comment.refresh_from_db()
+        self.assertEqual(comment.reply, reply_payload)
+
+
+class RecommendationTest(BaseApiTestCase):
+    def test_auto_sort2_prefers_matching_vehiclemodel_or_route(self):
+        Storeup = self.get_model_or_fail("storeup")
+        Storeup.objects.create(
+            userid=self.front_user.id,
+            refid=self.log_a.id,
+            tablename="drivinglog",
+            name=self.log_a.vehiclenumber,
+            picture="",
+            type="1",
+            inteltype="vehiclemodel",
+        )
+
+        response = self.client.get(
+            self.api("drivinglog/autoSort2"),
+            {"page": 1, "limit": 10},
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertIn("list", payload["data"])
+        ids = [item["id"] for item in payload["data"]["list"]]
+        self.assertIn(self.log_b.id, ids)
+        self.assertNotEqual(ids[0], self.log_c.id)
+
+    def test_auto_sort2_falls_back_when_user_has_no_preference(self):
+        response = self.client.get(
+            self.api("drivinglog/autoSort2"),
+            {"page": 1, "limit": 10},
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertIn("list", payload["data"])
+        self.assertGreaterEqual(len(payload["data"]["list"]), 1)
+
+
+class UserUtilityTest(BaseApiTestCase):
+    def test_users_account_list_returns_account_data(self):
+        response = self.client.get(
+            self.api("users/accountList"),
+            **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertIsInstance(payload["data"], list)
+        self.assertTrue(any(item["account"] == self.admin_user.username for item in payload["data"]))
+
+    def test_user_auto_sort2_returns_standard_page_payload(self):
+        response = self.client.get(
+            self.api("user/autoSort2"),
+            {"page": 1, "limit": 10},
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertIn("list", payload["data"])

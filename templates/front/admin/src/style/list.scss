@@ -1,0 +1,228 @@
+/* 1. 页面容器 */
+.list-wrapper {
+  width: 100%;
+  padding: 0px 30px;
+}
+
+/* 1.1 搜索 */
+.search-wrapper {
+  background-color: #E2EBF6;
+  padding: 30px;
+  margin-bottom: 10px;
+  border-radius: 16px;
+
+  .el-form-item {
+    margin-bottom: 12px;
+  }
+
+  /* 文本框宽度 */
+  .el-input {
+    --el-input-width: 180px;
+  }
+
+  /* 单选框宽度 */
+  .el-select {
+    --el-select-width: 180px;
+  }
+
+  /* 搜索按钮 */
+  .searchbtn {
+    .el-button {
+      background-color: #2062D2;
+      padding: 0 15px;
+      border-radius: 14px;
+      border-width: 0 !important;
+      font-weight: bold;
+      color: var(--btn-font-color-);
+
+      &:hover {
+        opacity: 0, 8;
+      }
+    }
+  }
+}
+
+
+/* 1.2 表头的按钮 */
+.header-button-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 15px 0;
+  border-radius: 6px;
+
+  .el-button+.el-button {
+    margin-left: 0;
+  }
+
+  /* 添加 */
+  .action-add,
+  .action-removes,
+  .el-button {
+    padding: 0 15px;
+    border-radius: 14px;
+    border-width: 0 !important;
+    font-weight: bold;
+    color: var(--btn-font-color-);
+
+    &:hover {
+      opacity: 0, 8;
+    }
+  }
+
+  .action-add {
+    background-color: #2062D2;
+  }
+
+  /* 删除 */
+  .action-removes {
+    background: red !important;
+  }
+
+  /* 其它 */
+  .el-button {
+    background-color: #2062D2;
+  }
+}
+
+.list-wrapper {
+  .el-table tr {
+    color: #2C365E !important;
+    background: #E2EBF6 !important;
+    border-bottom: 1px solid #845C3F !important;
+  }
+
+  .el-table.is-scrolling-left th {
+    background: #E2EBF6 !important;
+    color: #33464C !important;
+  }
+
+  .el-table thead {
+    color: #2C365E;
+    font-weight: 400 !important;
+  }
+
+  /* 1.3 表格 */
+  .el-table {
+    padding: 20px;
+    background: #E2EBF6;
+    --el-table-header-bg-color: #E2EBF6 !important;
+    --el-table-border-color: #845C3F !important;
+    border-radius: 16px;
+
+    /* 提醒功能的高亮 */
+    .warn-row {
+      background: linear-gradient(180deg, #D9BC00 0%, #FFB200 100%);
+    }
+
+    .cell {
+      line-height: 32px;
+      color: #212D3F;
+    }
+  }
+}
+
+
+.el-form-item__label {
+  color: #000000;
+}
+
+.el-input__wrapper,
+.select__wrapper {
+  border: 1px solid #212D3F !important;
+}
+
+/* 表格的图片 */
+.table-image {
+  height: 32px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* 表格的操作按钮 */
+.table-button-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: none;
+
+  .el-button+.el-button {
+    margin-left: 0;
+  }
+}
+
+.el-form-item__content .el-input__wrapper,
+.el-form-item__content .el-select__wrapper,
+.el-textarea__inner,
+.ql {
+  border: 1px solid #212D3F !important;
+}
+
+/* 分页 */
+.pagination {
+  width: 100%;
+  background-color: none;
+  padding: 20px;
+  display: flex;
+  justify-content: flex-end;
+
+  /* 按钮的背景颜色 */
+  .el-pagination {
+    --el-pagination-button-bg-color: none;
+
+  }
+
+  .el-pagination__sizes,
+  .el-pagination__total {
+    color: #212D3F !important;
+  }
+
+  /* 激活 */
+  .el-pagination.is-background .el-pager li.is-active {
+    background-color: var(--btn-bg-color-);
+    color: var(--btn-font-color-);
+  }
+}
+
+.el-button--small {
+  border: 0;
+  color: #212D3F !important;
+  background: none !important;
+}
+
+.el-button--small:hover {
+  opacity: 0.8;
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner,
+.ql {
+  border: 1px solid #212D3F !important;
+}
+
+.el-select__placeholder {
+  color: #212D3F !important;
+}
+
+.el-pagination.is-background .btn-next .el-pagination.is-background .btn-next:disabled,
+.el-pagination.is-background .btn-prev.is-disabled,
+.el-pagination.is-background .btn-prev:disabled,
+.el-pagination.is-background .el-pager li.is-disabled,
+.el-pagination.is-background .el-pager li {
+  border: 1px solid #212D3F !important;
+  color: #212D3F !important;
+}
+
+.el-pagination.is-background .el-pager li.is-active {
+  border: 0px solid #212D3F !important;
+  background: #2062D2 !important;
+  color: #fff !important;
+}
+
+.el-pagination .btn-next,
+.el-pager li {
+  border: 1px solid #212D3F !important;
+  color: #212D3F !important;
+  background: none !important;
+}
