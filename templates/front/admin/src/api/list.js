@@ -261,6 +261,28 @@ export function getForecastScenariosAPI(tableName, data) {
     data,
   })
 }
+
+/**
+ * @description 预测模型同输入 ML / DL 对比
+ */
+export function getForecastCompareAPI(tableName, data) {
+  return http({
+    url: `${tableName}/compare`,
+    method: 'post',
+    data,
+  })
+}
+
+/**
+ * @description NASA 真实寿命实验结果
+ */
+export function getNasaExperimentAPI(tableName, params = {}) {
+  return http({
+    url: `${tableName}/nasaExperiment`,
+    method: 'get',
+    params,
+  })
+}
 /**
  * @description 预测完后的图表
  */

@@ -24,6 +24,8 @@ import { isAuth } from "@/utils/auth";
 
 const router = useRouter()
 const route = useRoute()
+const runIdle =
+  globalThis.requestIdleCallback || ((callback) => setTimeout(callback, 1))
 let { tableName: initTableName, username: initUsername } = route.query
 
 // 登录角色列表
@@ -177,7 +179,7 @@ async function loginSucessEvent(token, tableName) {
 }
 
 onMounted(() => {
-  requestIdleCallback(() => {
+  runIdle(() => {
     // 提前加载 看板
     import ('@/views/board/index.vue')
     // 提前加载 首页

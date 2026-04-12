@@ -2,7 +2,7 @@
 import '@/style/list.scss'
 import '@/components/TableItem/index'
 
-import { onMounted, reactive, ref, watch, watchEffect, shallowRef } from 'vue'
+import { computed, ref, watch, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import ListSearch from './ListSearch.vue'
@@ -49,34 +49,55 @@ import getFilePath from '@/utils/getFilePath'
 const route = useRoute()
 const router = useRouter()
 
-// 表名
-let tableName = route.path.split('/')[1]
-let { table } = tableConfigs[tableName]
+const tableName = computed(() => route.path.split('/')[1] || '')
+const menuTableName = computed(() => route.path.replace(/^\//, ''))
+const tableConfig = computed(() => tableConfigs[tableName.value] || {})
+const table = computed(() => tableConfig.value.table || {})
+const columns = computed(() =>
+  tableConfigs[tableName.value]
+    ? getColums(tableName.value, 'list', { configType: route.params.type })
+    : []
+)
+const tableButtons = computed(() => getTableButtons(tableName.value, menuTableName.value))
+const headerButtons = computed(() => getHeaderButtons(tableName.value, menuTableName.value))
+const listPageKey = computed(() => `${tableName.value}:${route.params.type || ''}`)
 
-// 所有列
-let columns = getColums(tableName, 'list', { configType: route.params.type })
+function createDefaultSortData() {
+  if (!table.value.sortName) {
+    return {}
+  }
+
+  return {
+    sort: table.value.sortName,
+    order: table.value.sortOrder,
+  }
+}
+
+const defaultSort = computed(() =>
+  table.value.sortName
+    ? {
+        prop: table.value.sortName,
+        order: table.value.sortOrder == 'asc' ? 'ascending' : 'descending',
+      }
+    : {}
+)
 
 // 列表数据和加载
 const datas = ref([])
 const isLoading = ref(false)
+const emptyStateTitle = computed(() =>
+  listMode.value === 'recommend' ? '暂无推荐结果' : '暂无可展示数据'
+)
+const emptyStateDescription = computed(() =>
+  listMode.value === 'recommend'
+    ? '当前没有命中偏好推荐条件的数据，你可以切回默认列表继续查看。'
+    : '当前列表为空，可以尝试调整筛选条件，或先新增一条记录。'
+)
 
 // ----------------------------------
 // ---------- 排序配置 ---------------
 // ----------------------------------
-const sortData = ref(
-  table.sortName
-    ? {
-        sort: table.sortName,
-        order: table.sortOrder,
-      }
-    : {}
-)
-const defaultSort = table.sortName
-  ? {
-      prop: table.sortName,
-      order: table.sortOrder == 'asc' ? 'ascending' : 'descending',
-    }
-  : {}
+const sortData = ref(createDefaultSortData())
 function sortChangeEvent(data) {
   let { order, prop } = data
   switch (order) {
@@ -145,8 +166,6 @@ function openDialog(data) {
 // ----------------------------------
 // ---------- 操作按钮 ---------------
 // ----------------------------------
-const menuTableName = route.path.replace(/^\//, '')
-const tableButtons = getTableButtons(tableName, menuTableName)
 const listMode = ref('page')
 // 部分按钮，特殊条件下不显示
 function getShow_tableButtons(button, row) {
@@ -156,7 +175,7 @@ function getShow_tableButtons(button, row) {
     return localStorage.getItem('sessionTable') === 'users'
   }
 
-  if (tableName == 'orders') {
+  if (tableName.value == 'orders') {
     switch (button.name) {
 
 
@@ -195,7 +214,7 @@ const actionEvent = (button, row) => {
 }
 // 查看评论
 function discuss(button, row) {
-  if (tableName === 'drivinglog' && localStorage.getItem('sessionTable') !== 'users') {
+  if (tableName.value === 'drivinglog' && localStorage.getItem('sessionTable') !== 'users') {
     dialogTitle.value = '提交评论'
     dialogComponent.value = ListEdit
     dialogClass.value = ''
@@ -212,12 +231,12 @@ function discuss(button, row) {
     dialogVisible.value = true
     return
   }
-  router.push({ path: `/discuss${tableName}`, query: { refid: row.id } })
+  router.push({ path: `/discuss${tableName.value}`, query: { refid: row.id } })
 }
 async function storeUp(button, row) {
   let res = await toggleStoreupAPI({
     refid: row.id,
-    tablename: tableName,
+    tablename: tableName.value,
   })
   let isStoreup = res.data?.storeup
   ElMessage.success(isStoreup ? '收藏成功' : '已取消收藏')
@@ -233,7 +252,7 @@ async function crawlVehicleKnowledge(button, row) {
     let res = await crawlVehicleKnowledgeAPI({ vehiclemodel })
     let status = res.data?.crawlstatus || '成功'
     ElMessage.success(`车型知识采集完成：${vehiclemodel}（${status}）`)
-    if (tableName === 'vehicleknowledge') {
+    if (tableName.value === 'vehicleknowledge') {
       fetchData()
     }
   } catch (error) {
@@ -250,7 +269,7 @@ function discussReply(button, row) {
   dialogData = {
     type: 'update',
     id: row.id,
-    tableName,
+    tableName: tableName.value,
     row,
     okText: '提交',
     cancleText: '取消',
@@ -272,7 +291,7 @@ function discussReply_vut(button, row) {
     .catch(() => {})
 }
 async function replyEvent(id, content) {
-  let { data } = await getDetailAPI(tableName, id)
+  let { data } = await getDetailAPI(tableName.value, id)
   let { reply } = data
   let replyData = {
     id: Date.now(),
@@ -292,7 +311,7 @@ async function replyEvent(id, content) {
   replyList.push(replyData)
   data.reply = JSON.stringify(replyList)
 
-  await updateAPI(tableName, data)
+  await updateAPI(tableName.value, data)
   ElMessage.success('操作成功')
   fetchData()
 }
@@ -300,7 +319,6 @@ async function replyEvent(id, content) {
 // ----------------------------------
 // ---------- 表头按钮 ---------------
 // ----------------------------------
-const headerButtons = getHeaderButtons(tableName, menuTableName)
 const headerEventMap = {
   removes,
   add,
@@ -363,7 +381,7 @@ function remove(button, row) {
   })
     .then(async () => {
       let ids = [row.id]
-      await deleteAPI(tableName, ids)
+      await deleteAPI(tableName.value, ids)
       ElMessage.success('删除成功')
       fetchData()
     })
@@ -382,7 +400,7 @@ function removes() {
   })
     .then(async () => {
       let ids = selectedDatas.value.map(item => item.id)
-      await deleteAPI(tableName, ids)
+      await deleteAPI(tableName.value, ids)
       ElMessage.success('删除成功')
       selectedDatas.value = []
       fetchData()
@@ -414,7 +432,7 @@ function add(button) {
   dialogData = {
     type: 'add', // add: 新增 update: 编辑 cross: 跨表
     id: '',
-    tableName,
+    tableName: tableName.value,
     defaultData: {
       ...route.params,
       ...route.query,
@@ -432,7 +450,7 @@ function edit(button, row) {
   dialogData = {
     type: 'update',
     id: row.id,
-    tableName,
+    tableName: tableName.value,
     row,
     okText: '提交',
     cancleText: '取消',
@@ -444,20 +462,20 @@ function edit(button, row) {
 // ----------------------------------
 async function crossTableHander(button, row) {
   let { name, crossType } = button
-  let tableConfig = tableConfigs[tableName]
-  let { table, columns } = tableConfig
-  let { sfsh, isReverse, virtualPay } = table
-  let index = table.crossOptButton.findIndex(buttonName => buttonName === name)
+  let tableConfig = tableConfigs[tableName.value]
+  let { table: currentTable, columns: currentColumns } = tableConfig
+  let { sfsh, isReverse, virtualPay } = currentTable
+  let index = currentTable.crossOptButton.findIndex(buttonName => buttonName === name)
   // 跨表的关联数据
   // 审核权限
-  let crossOptAudit = table.crossOptAudit[index]
-  let crossOptPay = table.crossOptPay[index]
+  let crossOptAudit = currentTable.crossOptAudit[index]
+  let crossOptPay = currentTable.crossOptPay[index]
   // 提示
-  let tips = table.crossOptButtonTips[index]
+  let tips = currentTable.crossOptButtonTips[index]
   // 状态字段
-  let statusColumnName = table.crossOptButtonStatusColumns[index]
+  let statusColumnName = currentTable.crossOptButtonStatusColumns[index]
   // 新表
-  let newTableName = table.crossOptTableName[index]
+  let newTableName = currentTable.crossOptTableName[index]
 
   // [1] 退出条件判断
   // 已开启审核功能，且未审核状态
@@ -507,7 +525,7 @@ async function crossTableHander(button, row) {
       }
     } else {
       // 状态限制
-      let { customize } = columns.find(column => column.columnName === statusColumnName)
+      let { customize } = currentColumns.find(column => column.columnName === statusColumnName)
       // 关联的字段，约定是单选类型、且取的是选项一的值 customize: '已取消,已预约'-> statusColumnValue: '已取消'
       statusColumnValue = customize.split(',')[0]
       if (row[statusColumnName] === statusColumnValue) {
@@ -533,7 +551,7 @@ async function crossTableHander(button, row) {
           statusColumnName,
           statusColumnValue,
           oldRow: row,
-          oldTableName: tableName,
+          oldTableName: tableName.value,
           newTableName,
         },
         okText: '提交',
@@ -552,7 +570,7 @@ async function crossTableHander(button, row) {
 // ----------------------------------
 function exportExcel() {
   // 获取当前表的columns配置
-  let columns = getColums(tableName, 'view')
+  let columns = getColums(tableName.value, 'view')
 
   // 一个sheet表数据
   let wsData = []
@@ -571,7 +589,7 @@ function exportExcel() {
   const wb = utils.book_new()
   const ws = utils.aoa_to_sheet(wsData)
   utils.book_append_sheet(wb, ws, 'Sheet1')
-  writeFileXLSX(wb, `${tableName}.xlsx`)
+  writeFileXLSX(wb, `${tableName.value}.xlsx`)
 
   ElMessage.success('导出成功')
 }
@@ -605,7 +623,7 @@ function uploadTemplate(button) {
 // 下载模板
 async function downloadTemplate() {
   try {
-    let fileName = `${tableName}_template.xlsx`
+    let fileName = `${tableName.value}_template.xlsx`
     await downloadFile(fileName)
 
     ElMessage.success('下载模板成功')
@@ -620,7 +638,7 @@ async function downloadTemplate() {
 // ----------------------------------
 function showChart(button) {
   let { title } = button
-  dialogData = chartData.find(item => item.tableName === tableName && item.title == title)
+  dialogData = chartData.find(item => item.tableName === tableName.value && item.title == title)
   dialogData = {
     ...dialogData,
     title: ''
@@ -668,7 +686,7 @@ async function forecast(button, row) {
       apiData[name] = row[name]
     })
 
-    await predictAPI(tableName, apiData)
+    await predictAPI(tableName.value, apiData)
     await fetchData()
     ElMessage.closeAll()
     ElMessage.success('数据预测完成')
@@ -692,7 +710,7 @@ async function forecast2() {
   isForecastLoading = true
 
   try {
-    await predictAPI(tableName)
+    await predictAPI(tableName.value)
     await fetchData()
     ElMessage.closeAll()
     ElMessage.success('数据预测完成')
@@ -706,7 +724,7 @@ async function forecast2() {
 // 预测图表
 async function forecastChart(button) {
   try {
-    let res = await predictImgAPI(tableName)
+    let res = await predictImgAPI(tableName.value)
     let imgList = res.data.map(item => {
       return {
         img: getFilePath(item),
@@ -738,7 +756,7 @@ async function dataClean(){
     type: 'warning',
   })
     .then(async () => {
-      await cleanseAPI(tableName)
+      await cleanseAPI(tableName.value)
       ElMessage.success('数据清洗完成')
       fetchData()
     })
@@ -754,14 +772,21 @@ async function dataClean(){
 
 // 拉取数据
 async function fetchData(fetchParams) {
+  if (!tableName.value || !tableConfigs[tableName.value]) {
+    datas.value = []
+    total.value = 0
+    isLoading.value = false
+    return
+  }
+
   isLoading.value = true
   try {
     let apiFn = listMode.value === 'recommend' ? getAutoSort2API : getPageAPI
-    let apiTableName = tableName
+    let apiTableName = tableName.value
     let _params = {}
 
     // 特殊表，微调一些参数
-    switch (tableName) {
+    switch (tableName.value) {
 
 
 
@@ -800,15 +825,28 @@ async function fetchData(fetchParams) {
   isLoading.value = false
 }
 
-watchEffect(() => {
-  fetchData()
+function resetListViewState() {
+  sortData.value = createDefaultSortData()
+  searchData.value = {}
+  currentPage.value = 1
+  total.value = 0
+  listMode.value = 'page'
+  selectedDatas.value = []
+}
+
+watch([tableName, () => route.params.type], () => {
+  resetListViewState()
 })
+
+watch([currentPage, pageSize, sortData, searchData, listMode, () => route.fullPath], () => {
+  fetchData()
+}, { deep: true, immediate: true })
 </script>
 
 <template>
   <div class="list-wrapper">
     <!-- 搜索 -->
-    <ListSearch :tableName="tableName" buttonName="查询" @search="searchEvent" />
+    <ListSearch :key="listPageKey" :tableName="tableName" buttonName="查询" @search="searchEvent" />
 
     <!-- 按钮 -->
     <div class="header-button-wrapper" v-if="headerButtons.length">
@@ -824,6 +862,7 @@ watchEffect(() => {
     </div>
     <!-- 表格 -->
     <el-table
+      :key="listPageKey"
       v-loading="isLoading"
       :data="datas"
       row-key="id"
@@ -833,6 +872,16 @@ watchEffect(() => {
       :border="false"
       :show-overflow-tooltip="true"
     >
+      <template #empty>
+        <div class="table-empty-state">
+          <div class="table-empty-title">{{ emptyStateTitle }}</div>
+          <div class="table-empty-description">{{ emptyStateDescription }}</div>
+          <el-button v-if="listMode === 'recommend'" text type="primary" @click="recommend">
+            返回默认列表
+          </el-button>
+        </div>
+      </template>
+
       <el-table-column type="selection" :width="100" />
 
       <!-- 首列配置了fixed -->
@@ -917,3 +966,24 @@ watchEffect(() => {
 
   </div>
 </template>
+
+<style scoped>
+.table-empty-state {
+  padding: 28px 12px;
+  text-align: center;
+}
+
+.table-empty-title {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.table-empty-description {
+  margin: 8px auto 0;
+  max-width: 320px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+}
+</style>

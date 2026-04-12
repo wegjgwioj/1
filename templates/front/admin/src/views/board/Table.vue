@@ -21,6 +21,7 @@ const fetchData = async () => {
   let apiParams = {
     page: 1,
     limit: 20,
+    _t: Date.now(),
   }
   if (sortColumn) {
     apiParams.order = sortColumn.sort == '升' ? 'asc' : 'desc'

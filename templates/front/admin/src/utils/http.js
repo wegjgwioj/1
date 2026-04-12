@@ -48,7 +48,7 @@ http.interceptors.response.use(
 
       // 401需要是用户没有登录
       case 401:
-        localStorage.removeItems();
+        localStorage.clear();
         ElMessage({
           message: '登录凭证失效，请先登录',
           grouping: true,
@@ -68,7 +68,7 @@ http.interceptors.response.use(
     // 根据url判断是：获取当前登录的用户信息的api url: users/session, yonghu/session
     let isSession = /\/session$/.test(url);
     if (isSession) {
-      localStorage.removeItems();
+      localStorage.clear();
       router.push("/login");
     }
 

@@ -25,3 +25,25 @@ test('role menu config contains a direct forecast workspace menu item', async ()
   assert.match(content, /tableName:\s*'forecastWorkbench'/)
   assert.match(content, /menu:\s*'预测工作台'/)
 })
+
+test('forecast workspace view exposes ML and DL comparison summary fields', async () => {
+  const content = await readFile(new URL('../src/views/board/Forecast.vue', import.meta.url), 'utf-8')
+  assert.match(content, /同输入 ML \/ DL 结果对比/)
+  assert.match(content, /DL 后端/)
+  assert.match(content, /训练来源/)
+  assert.match(content, /样本量/)
+  assert.match(content, /DL 版本/)
+})
+
+test('forecast workspace view exposes NASA experiment section', async () => {
+  const content = await readFile(new URL('../src/views/board/Forecast.vue', import.meta.url), 'utf-8')
+  assert.match(content, /NASA 真实寿命实验/)
+  assert.match(content, /SOH/)
+  assert.match(content, /RUL/)
+})
+
+test('http utility clears local storage with the standard API on auth failures', async () => {
+  const content = await readFile(new URL('../src/utils/http.js', import.meta.url), 'utf-8')
+  assert.doesNotMatch(content, /localStorage\.removeItems\(/)
+  assert.match(content, /localStorage\.clear\(\)/)
+})

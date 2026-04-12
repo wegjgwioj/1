@@ -16,6 +16,8 @@ import Map from "./Map.vue";
 import Statics from "./Statics.vue";
 import Table from "./Table.vue";
 import Forecast from "./Forecast.vue";
+const runIdle =
+  globalThis.requestIdleCallback || ((callback) => setTimeout(callback, 1))
 const typeMap = {
   multiStatic: Chart,
   image: Image,
@@ -197,7 +199,7 @@ function getShowItems(inputBase) {
 
 onMounted(() => {
   setTimeout(() => {
-    requestIdleCallback(() => {
+    runIdle(() => {
       // 提前加载 首页
       import ('@/views/home/home.vue')
     });

@@ -1009,6 +1009,70 @@
       font-weight: 700;
     }
 
+    .nasa-topline{
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+
+    .nasa-title{
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .nasa-link{
+      color: #7efafc;
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: nowrap;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(126, 250, 252, 0.35);
+    }
+
+    .nasa-link:hover{
+      opacity: 0.85;
+    }
+
+    .nasa-meta{
+      margin-top: 14px;
+    }
+
+    .nasa-feature-list,
+    .nasa-note-grid,
+    .nasa-figure-grid{
+      margin-top: 14px;
+    }
+
+    .nasa-figure-grid{
+      display: grid;
+      gap: 10px;
+    }
+
+    .nasa-figure-card,
+    .nasa-note-card{
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(3, 12, 22, 0.78);
+      border: 1px solid rgba(126, 250, 252, 0.08);
+    }
+
+    .nasa-note-card-warning{
+      border-color: rgba(255, 191, 74, 0.18);
+      background: rgba(255, 191, 74, 0.06);
+    }
+
+    .nasa-figure-image{
+      border-radius: 12px;
+      margin-bottom: 12px;
+      display: block;
+      background: rgba(255, 255, 255, 0.03);
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+    }
+
     .comparison-grid{
       display: grid;
       gap: 10px;

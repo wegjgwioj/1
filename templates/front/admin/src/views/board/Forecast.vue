@@ -2,15 +2,19 @@
 import { onMounted, ref } from 'vue'
 
 import {
+  getForecastCompareAPI,
   getForecastMetricsAPI,
   getForecastScenariosAPI,
+  getNasaExperimentAPI,
   predictWorkspaceAPI,
 } from '@/api/list'
 
 import {
+  normalizeCompareResult,
   createForecastForm,
   normalizeComparisonRows,
   normalizeMetricCards,
+  normalizeNasaExperimentResult,
   normalizePredictionResult,
   normalizeScenarioCards,
 } from './forecastState'
@@ -97,17 +101,21 @@ const formFields = [
 
 const formState = ref(createForecastForm())
 const predictionResult = ref(null)
+const compareResult = ref(null)
 const scenarioCards = ref([])
 const metricCards = ref([])
 const comparisonRows = ref([])
+const nasaExperiment = ref(normalizeNasaExperimentResult())
 const updatedAt = ref('')
 const modelVersion = ref('')
 const isMetricsLoading = ref(false)
+const isNasaLoading = ref(false)
 const isSubmitting = ref(false)
 
 function resetForm() {
   formState.value = createForecastForm()
   predictionResult.value = null
+  compareResult.value = null
   scenarioCards.value = []
 }
 
@@ -132,6 +140,17 @@ async function loadMetrics() {
   isMetricsLoading.value = false
 }
 
+async function loadNasaExperiment() {
+  isNasaLoading.value = true
+  try {
+    const res = await getNasaExperimentAPI(tableName)
+    nasaExperiment.value = normalizeNasaExperimentResult(res.data || {})
+  } catch (error) {
+    nasaExperiment.value = normalizeNasaExperimentResult()
+  }
+  isNasaLoading.value = false
+}
+
 async function forecast() {
   if (isSubmitting.value) {
     return
@@ -143,13 +162,18 @@ async function forecast() {
   })
   try {
     const payload = { ...formState.value }
-    const [predictionRes, scenarioRes] = await Promise.all([
+    const [predictionRes, scenarioRes, compareRes] = await Promise.all([
       predictWorkspaceAPI(tableName, payload),
       getForecastScenariosAPI(tableName, payload),
+      getForecastCompareAPI(tableName, payload),
     ])
 
     predictionResult.value = normalizePredictionResult(predictionRes.data)
-    scenarioCards.value = normalizeScenarioCards(scenarioRes.data.scenarios || [])
+    compareResult.value = normalizeCompareResult(compareRes.data)
+    scenarioCards.value = normalizeScenarioCards(
+      scenarioRes.data.scenarios || [],
+      predictionResult.value,
+    )
     applyMetricState(predictionRes.data.metrics || {}, predictionRes.data.comparison_metrics || {}, {
       updatedAt: predictionRes.data.updated_at || scenarioRes.data.updated_at,
       modelVersion: predictionRes.data.modelversion || scenarioRes.data.modelversion,
@@ -165,6 +189,7 @@ async function forecast() {
 
 onMounted(() => {
   loadMetrics()
+  loadNasaExperiment()
 })
 </script>
 
@@ -176,7 +201,7 @@ onMounted(() => {
         <div>
           <div class="hero-title">输入一组工况，立即返回寿命、能耗和风险判断</div>
           <div class="hero-subtitle">
-            当前页面直接调用机器学习模型，并同步给出 3 种典型场景的对比结果。
+            当前页面同时给出机器学习主模型、深度学习对比模型和 3 种典型场景的模拟结果。
           </div>
         </div>
         <div
@@ -249,6 +274,18 @@ onMounted(() => {
             </span>
           </div>
         </div>
+        <div class="result-factors">
+          <div class="result-caption">建议动作</div>
+          <div class="factor-list">
+            <span
+              class="factor-chip factor-chip-soft"
+              v-for="recommendation in predictionResult.recommendations"
+              :key="recommendation"
+            >
+              {{ recommendation }}
+            </span>
+          </div>
+        </div>
       </div>
     </transition>
 
@@ -275,6 +312,12 @@ onMounted(() => {
               <strong>{{ scenario.prediction.predictedpowerconsumption }} kWh/100km</strong>
             </div>
           </div>
+          <div class="scenario-metrics">
+            <div class="scenario-metric" v-for="delta in scenario.deltaRows" :key="`${scenario.name}-${delta.label}`">
+              <span>{{ delta.label }}</span>
+              <strong>{{ delta.value }}</strong>
+            </div>
+          </div>
           <div class="factor-list">
             <span
               class="factor-chip factor-chip-soft"
@@ -283,6 +326,49 @@ onMounted(() => {
             >
               {{ factor }}
             </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="forecast-section" v-if="compareResult">
+      <div class="section-title">同输入 ML / DL 结果对比</div>
+      <div class="comparison-list">
+        <div class="comparison-card">
+          <div class="comparison-title">预测结果</div>
+          <div class="comparison-grid">
+            <div class="comparison-model">
+              <div class="comparison-label">机器学习主模型</div>
+              <div class="comparison-metrics">
+                <span>风险 {{ compareResult.ml.riskLabel }}</span>
+                <span>寿命 {{ compareResult.ml.batterylife }} 月</span>
+                <span>耗电 {{ compareResult.ml.predictedpowerconsumption }} kWh/100km</span>
+              </div>
+            </div>
+            <div class="comparison-model comparison-model-neural">
+              <div class="comparison-label">深度学习对比模型</div>
+              <div class="comparison-metrics">
+                <span>风险 {{ compareResult.dl.riskLabel }}</span>
+                <span>寿命 {{ compareResult.dl.batterylife }} 月</span>
+                <span>耗电 {{ compareResult.dl.predictedpowerconsumption }} kWh/100km</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="comparison-card">
+          <div class="comparison-title">对比摘要</div>
+          <div class="comparison-metrics">
+            <span>DL 后端 {{ compareResult.backendLabel }}</span>
+            <span>训练来源 {{ compareResult.trainingSourceLabel }}</span>
+            <span>样本量 {{ compareResult.sampleCountText }}</span>
+            <span>DL 版本 {{ compareResult.modelVersionText }}</span>
+            <span>建议主看 {{ compareResult.preferredModelLabel }}</span>
+          </div>
+          <div class="scenario-metrics">
+            <div class="scenario-metric" v-for="delta in compareResult.deltaRows" :key="delta.label">
+              <span>{{ delta.label }}</span>
+              <strong>{{ delta.value }}</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -348,6 +434,108 @@ onMounted(() => {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="forecast-section forecast-section-nasa">
+      <div class="section-title">
+        NASA 真实寿命实验
+        <span class="section-tip" v-if="isNasaLoading">加载中...</span>
+      </div>
+      <template v-if="nasaExperiment.available">
+        <div class="nasa-topline">
+          <div>
+            <div class="nasa-title">{{ nasaExperiment.datasetName }}</div>
+            <div class="scenario-desc">
+              用公开电池老化数据把 SOH / RUL 预测链路展示出来，补齐“真实寿命实验”这一层证据。
+            </div>
+          </div>
+          <a
+            class="nasa-link"
+            v-if="nasaExperiment.sourceUrl"
+            :href="nasaExperiment.sourceUrl"
+            target="_blank"
+            rel="noreferrer"
+          >
+            查看数据源
+          </a>
+        </div>
+
+        <div class="result-grid nasa-summary-grid">
+          <div class="result-item" v-for="item in nasaExperiment.summaryRows" :key="item.label">
+            <div class="result-label">{{ item.label }}</div>
+            <div class="result-value">{{ item.value }}</div>
+          </div>
+        </div>
+
+        <div class="comparison-metrics nasa-meta">
+          <span>模型组合 {{ nasaExperiment.modelFamily }}</span>
+          <span>切分方式 {{ nasaExperiment.splitStrategyText }}</span>
+          <span>最近训练 {{ nasaExperiment.updatedAt }}</span>
+        </div>
+
+        <div class="metrics-list nasa-metric-list" v-if="nasaExperiment.metricCards.length">
+          <div class="metric-card" v-for="card in nasaExperiment.metricCards" :key="card.key">
+            <div class="metric-card-head">
+              <div class="metric-card-title">{{ card.title }}</div>
+            </div>
+            <div class="metric-card-grid">
+              <div class="metric-cell">
+                <span>MAE</span>
+                <strong>{{ card.mae }}</strong>
+              </div>
+              <div class="metric-cell">
+                <span>RMSE</span>
+                <strong>{{ card.rmse }}</strong>
+              </div>
+              <div class="metric-cell">
+                <span>R²</span>
+                <strong>{{ card.r2 }}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="comparison-list nasa-feature-list">
+          <div class="comparison-card" v-for="item in nasaExperiment.featureRows" :key="item.label">
+            <div class="comparison-title">{{ item.label }}</div>
+            <div class="scenario-desc">{{ item.value }}</div>
+          </div>
+        </div>
+
+        <div class="nasa-figure-grid" v-if="nasaExperiment.figures.length">
+          <div class="nasa-figure-card" v-for="figure in nasaExperiment.figures" :key="figure.key">
+            <img class="nasa-figure-image" :src="figure.url" :alt="figure.title" />
+            <div class="scenario-name">{{ figure.title }}</div>
+            <div class="scenario-desc">{{ figure.description }}</div>
+          </div>
+        </div>
+
+        <div class="nasa-note-grid" v-if="nasaExperiment.notes.length || nasaExperiment.limitations.length">
+          <div class="nasa-note-card">
+            <div class="comparison-title">这能说明什么</div>
+            <div class="factor-list">
+              <span class="factor-chip factor-chip-soft" v-for="note in nasaExperiment.notes" :key="note">
+                {{ note }}
+              </span>
+            </div>
+          </div>
+          <div class="nasa-note-card nasa-note-card-warning" v-if="nasaExperiment.limitations.length">
+            <div class="comparison-title">当前边界</div>
+            <div class="factor-list">
+              <span
+                class="factor-chip factor-chip-soft"
+                v-for="limitation in nasaExperiment.limitations"
+                :key="limitation"
+              >
+                {{ limitation }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </template>
+      <div class="metrics-empty" v-else>
+        NASA 实验产物尚未就绪。先运行数据准备与训练命令后，这里会展示真实寿命实验指标和结果图。
       </div>
     </div>
   </div>

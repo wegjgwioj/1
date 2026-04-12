@@ -14,6 +14,8 @@ import Custom from './Custom.vue'
 import chartData from '@/components/Echart/chartData'
 import { isAuth } from '@/utils/auth';
 import { getCountAPI, getPageAPI } from '@/api/list'
+const runIdle =
+  globalThis.requestIdleCallback || ((callback) => setTimeout(callback, 1))
 
 // ----------------------------------
 // ----------- 总数统计 --------------
@@ -45,7 +47,7 @@ const roleChartList = chartData.filter(item => item.showHome).filter(item => isA
 
 onMounted(() => {
   setTimeout(() => {
-    requestIdleCallback(() => {
+    runIdle(() => {
       // 提前加载 列表页
       import("@/views/list/list.vue");
     });

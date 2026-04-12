@@ -10,10 +10,11 @@ env/
 
 # Local environment files
 .env
-docs/
+
 # Logs
 *.log
 *.out
+*.err
 runserver.out
 runserver.err
 
@@ -22,6 +23,7 @@ runserver.err
 .vscode/
 .DS_Store
 Thumbs.db
+.playwright-mcp/
 
 # Frontend build artifacts
 templates/front/admin/node_modules/
@@ -30,11 +32,14 @@ templates/front/admin/vite.out
 
 # Local uploads / generated assets
 media/
+artifacts/
+datasets/
 
-# Local thesis / dataset files
-docs/待提交/*.docx
-docs/待提交/*.xlsx
+# Local docs / thesis / plan files
+docs/*
+!docs/README.md
+docs/待提交/
+docs/plans/
 
 # Secrets
 util/alipay_key/*.txt
-docs/plans
