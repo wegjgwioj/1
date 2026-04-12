@@ -114,6 +114,10 @@ for i in os.listdir(mainDir):
         if tableName.lower() == "drivinglog":
             urlpatterns.extend(
                 [
+                    path(r'{}/cleanse-preview'.format(tableName.lower()),
+                         eval("{}_v.{}_cleanse_preview".format(tableName.capitalize(), tableName.lower()))),
+                    path(r'{}/cleanse-apply'.format(tableName.lower()),
+                         eval("{}_v.{}_cleanse_apply".format(tableName.capitalize(), tableName.lower()))),
                     path(r'{}/cleanse'.format(tableName.lower()),eval("{}_v.{}_cleanse".format(tableName.capitalize(), tableName.lower())))
                 ]
             )
@@ -151,6 +155,9 @@ for i in os.listdir(mainDir):
                        [
                         path(r'{}/forecastimgs'.format(tableName.lower()),eval("{}_v.{}_forecastimgs".format(tableName.capitalize(), tableName.lower()))),
                         path(r'{}/forecast'.format(tableName.lower()),eval("{}_v.{}_forecast".format(tableName.capitalize(), tableName.lower()))),
+                        path(r'{}/predict'.format(tableName.lower()),eval("{}_v.{}_predict".format(tableName.capitalize(), tableName.lower()))),
+                        path(r'{}/metrics'.format(tableName.lower()),eval("{}_v.{}_metrics".format(tableName.capitalize(), tableName.lower()))),
+                        path(r'{}/scenarios'.format(tableName.lower()),eval("{}_v.{}_scenarios".format(tableName.capitalize(), tableName.lower()))),
                        ]
                    )
         if tableName.lower()=="users":

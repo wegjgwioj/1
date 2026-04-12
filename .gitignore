@@ -10,7 +10,7 @@ env/
 
 # Local environment files
 .env
-
+docs/
 # Logs
 *.log
 *.out
@@ -37,3 +37,4 @@ docs/待提交/*.xlsx
 
 # Secrets
 util/alipay_key/*.txt
+docs/plans

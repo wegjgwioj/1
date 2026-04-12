@@ -76,7 +76,14 @@ const routes = [
         meta: {
           title: "电池寿命预测",
         },        
-      },  
+      },
+      {
+        path: '/forecastWorkbench',
+        component: () => import('@/views/forecast-workbench/index.vue'),
+        meta: {
+          title: '预测工作台',
+        },
+      },
       {
         path: '/users',
         component: ListPage,

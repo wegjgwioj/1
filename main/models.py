@@ -236,12 +236,22 @@ class drivinglogforecast(BaseModel):
     accumulatedmileage=models.IntegerField  (  null=True, unique=False, verbose_name='累计行驶里程' )
     drivingbehaviorrating=models.IntegerField  (  null=True, unique=False, verbose_name='驾驶行为评分' )
     batterylife=models.IntegerField  (  null=True, unique=False, verbose_name='电池寿命' )
+    predictedpowerconsumption=models.FloatField  (  null=True, unique=False, verbose_name='预测耗电量' )
+    risklevel=models.CharField ( max_length=20, null=True, unique=False, verbose_name='风险等级' )
+    modelname=models.CharField ( max_length=100, null=True, unique=False, verbose_name='模型名称' )
+    modelversion=models.CharField ( max_length=100, null=True, unique=False, verbose_name='模型版本' )
+    majorfactors=models.TextField   (  null=True, unique=False, verbose_name='主要影响因素' )
     '''
     vehiclemodel=VARCHAR
     batterycapacity=Integer
     accumulatedmileage=Integer
     drivingbehaviorrating=Integer
     batterylife=Integer
+    predictedpowerconsumption=Float
+    risklevel=VARCHAR
+    modelname=VARCHAR
+    modelversion=VARCHAR
+    majorfactors=Text
     '''
     class Meta:
         db_table = 'drivinglogforecast'

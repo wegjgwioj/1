@@ -341,6 +341,12 @@ export let headerButtons = [
     key: 'forecastChart',
     iconName: 'DataAnalysis',
   },
+  {
+    title: '预测工作台',
+    name: '预测工作台',
+    key: 'forecastWorkspace',
+    iconName: 'Monitor',
+  },
 ]
 export let tableButtons = [
   {

@@ -48,6 +48,8 @@ from sklearn.tree import DecisionTreeClassifier, export_graphviz
 import seaborn as sns
 pd.options.mode.chained_assignment = None  # default='warn'
 
+from .ml.predictors import load_ml_bundle, predict_drivinglog, predict_scenarios
+
 #获取当前文件路径的根目录
 parent_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 dbtype, host, port, user, passwd, dbName, charset,hasHadoop = config_read(os.path.join(parent_directory,"config.ini"))
@@ -84,41 +86,51 @@ def drivinglogforecast_forecastimgs(request):
 
 def drivinglogforecast_forecast(request):
     if request.method in ["POST", "GET"]:
-        msg = {'code': normal_code, "msg": mes.normal_code}
-        #1.获取数据集
-        req_dict = request.session.get("req_dict")
-        connection = pymysql.connect(**mysql_config)
-        query = "SELECT vehiclemodel,batterycapacity,accumulatedmileage,drivingbehaviorrating, batterylife FROM drivinglog"
-        #2.处理缺失值
-        data = pd.read_sql(query, connection).dropna()
-        id = req_dict.pop('id',None)
-        df = to_forecast(data,req_dict,None)
-        if df.empty:
-            msg = {'code': other_code, "msg": "样本数量不足！"}
-            return JsonResponse(msg, encoder=CustomJsonEncoder)
-        #9.创建数据库连接,将DataFrame 插入数据库
-        connection_string = f"mysql+pymysql://{mysql_config['user']}:{mysql_config['password']}@{mysql_config['host']}:{mysql_config['port']}/{mysql_config['database']}"
-        engine = create_engine(connection_string)
         try:
-            if req_dict :
-                #遍历 DataFrame，并逐行更新数据库
-                 with engine.connect() as connection:
-                    for index, row in df.iterrows():
-                        sql = """
-                        UPDATE drivinglogforecast SET
-                        batterylife = %(batterylife)s
-                        WHERE id = %(id)s
-                        """
-                        connection.execute(sql, {'id': id
-                            , 'batterylife': row['batterylife']
-                        })
-            else:
-                df.to_sql('drivinglogforecast', con=engine, if_exists='append', index=False)
-            print("数据更新成功！")
+            req_dict = (request.session.get("req_dict") or {}).copy()
+            persist = str(req_dict.pop("persist", "true")).lower() not in ("0", "false", "no", "否")
+            force_retrain = str(req_dict.pop("forceRetrain", "false")).lower() in ("1", "true", "yes", "是")
+            prediction = predict_drivinglog(req_dict, persist=persist, force_retrain=force_retrain)
+            msg = {'code': normal_code, "msg": mes.normal_code, "data": prediction}
         except Exception as e:
-            print(f"发生错误: {e}")
-        finally:
-            engine.dispose()  # 关闭数据库连接
+            msg = {'code': other_code, "msg": str(e)}
+        return JsonResponse(msg, encoder=CustomJsonEncoder)
+
+
+def drivinglogforecast_predict(request):
+    return drivinglogforecast_forecast(request)
+
+
+def drivinglogforecast_metrics(request):
+    if request.method in ["POST", "GET"]:
+        msg = {'code': normal_code, "msg": mes.normal_code, "data": {}}
+        try:
+            req_dict = (request.session.get("req_dict") or {}).copy()
+            force_retrain = str(req_dict.pop("forceRetrain", "false")).lower() in ("1", "true", "yes", "是")
+            bundle = load_ml_bundle(force_retrain=force_retrain)
+            msg["data"] = {
+                "metrics": bundle["metrics"],
+                "comparison_metrics": bundle.get("comparison_metrics", {}),
+                "updated_at": bundle["updated_at"],
+                "modelversion": bundle["version"],
+                "available_models": list(bundle["models"].keys()),
+            }
+        except Exception as e:
+            msg["code"] = other_code
+            msg["msg"] = str(e)
+        return JsonResponse(msg, encoder=CustomJsonEncoder)
+
+
+def drivinglogforecast_scenarios(request):
+    if request.method in ["POST", "GET"]:
+        msg = {'code': normal_code, "msg": mes.normal_code, "data": {}}
+        try:
+            req_dict = (request.session.get("req_dict") or {}).copy()
+            force_retrain = str(req_dict.pop("forceRetrain", "false")).lower() in ("1", "true", "yes", "是")
+            msg["data"] = predict_scenarios(req_dict, force_retrain=force_retrain)
+        except Exception as e:
+            msg["code"] = other_code
+            msg["msg"] = str(e)
         return JsonResponse(msg, encoder=CustomJsonEncoder)
 def to_forecast(data,req_dict,value):
     if len(data) < 5:

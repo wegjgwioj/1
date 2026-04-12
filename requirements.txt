@@ -1,5 +1,6 @@
 django==3.2.25
 django-threadlocals==0.10
+django-redis==5.4.0
 pymysql==1.1.1
 mysql-connector-python==9.6.0
 click==8.3.2

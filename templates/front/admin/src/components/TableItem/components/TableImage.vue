@@ -23,11 +23,27 @@ let srcList = computed(() => {
   <el-image
     class="table-image"
     preview-teleported
-    :src="srcList[0]"
+    :src="srcList[0] || ''"
     :preview-src-list="srcList"
     show-progress
     fit="cover"
-  />
+  >
+    <template #error>
+      <div class="table-image-placeholder">暂无图片</div>
+    </template>
+  </el-image>
 </template>
 
-<style></style>
+<style scoped>
+.table-image-placeholder {
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef3f8;
+  color: #8b95a7;
+  font-size: 12px;
+  border-radius: 8px;
+}
+</style>

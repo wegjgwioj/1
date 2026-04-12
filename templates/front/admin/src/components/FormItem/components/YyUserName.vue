@@ -3,10 +3,11 @@
  * @description 账号选择
  */
 import { nextTick, ref, watch } from 'vue'
+import { useFormItem } from 'element-plus'
 import { roleList } from '@/utils/role'
 import { getListAPI } from '@/api/list'
 import tableConfigs from '@/utils/tableConfigs'
-const { formItem } = ElementPlus.useFormItem()
+const { formItem } = useFormItem()
 defineOptions({
   inheritAttrs: false,
 })

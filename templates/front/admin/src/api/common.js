@@ -130,22 +130,6 @@ export function faceVerificationAPI(face1FileName, face2FileName) {
 }
 
 /**
- * @description 沙箱支付
- * @param { object } params
- * @param { string } data.tradeno 交易单号
- * @param { string } data.totalamount 价格
- * @param { string } data.subject  标题
- * @returns
- */
-export function alipayAPI(tableName, params) {
-  return http({
-    url: `${tableName}/alipay`,
-    method: 'get',
-    params,
-  })
-}
-
-/**
  * @description 提醒功能
  *
  */

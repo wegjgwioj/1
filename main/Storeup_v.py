@@ -11,6 +11,8 @@ import util.message as mes
 
 from .models import drivinglog, storeup
 
+DEFAULT_STOREUP_PICTURE = "upload/image1.jpg"
+
 
 def _req_dict(request):
     return dict(request.session.get("req_dict", {}) or {})
@@ -27,12 +29,30 @@ def _sync_storeupnum(tablename, refid):
     drivinglog.objects.filter(id=refid).update(storeupnum=total)
 
 
+def _fallback_picture(tablename):
+    if tablename == "drivinglog":
+        return DEFAULT_STOREUP_PICTURE
+    return ""
+
+
+def _normalize_storeup_record(record):
+    if not record:
+        return record
+    if not record.get("picture"):
+        record["picture"] = _fallback_picture(record.get("tablename"))
+    return record
+
+
+def _normalize_storeup_list(records):
+    return [_normalize_storeup_record(record) for record in records]
+
+
 def _enrich_storeup_payload(request_dict, user_id):
     payload = dict(request_dict)
     payload["userid"] = payload.get("userid") or user_id
     payload["tablename"] = payload.get("tablename") or "drivinglog"
     payload["type"] = payload.get("type") or "1"
-    payload["picture"] = payload.get("picture") or ""
+    payload["picture"] = payload.get("picture") or _fallback_picture(payload["tablename"])
     refid = int(payload.get("refid", 0) or 0)
 
     if payload["tablename"] == "drivinglog" and refid:
@@ -55,7 +75,7 @@ def storeup_default(request):
         req_dict = _req_dict(request)
         req_dict.update({"isdefault": "是"})
         data = storeup.getbyparams(storeup, storeup, req_dict)
-        msg["data"] = data[0] if data else {}
+        msg["data"] = _normalize_storeup_record(data[0]) if data else {}
         return JsonResponse(msg, encoder=CustomJsonEncoder)
 
 
@@ -66,6 +86,7 @@ def storeup_page(request):
         if Auth().getTokenInfo(request).get("tablename") != "users":
             req_dict["userid"] = _current_user_id(request)
         msg["data"]["list"], msg["data"]["currPage"], msg["data"]["totalPage"], msg["data"]["total"], msg["data"]["pageSize"] = storeup.page(storeup, storeup, req_dict, request, Q())
+        msg["data"]["list"] = _normalize_storeup_list(msg["data"]["list"])
         return JsonResponse(msg, encoder=CustomJsonEncoder)
 
 
@@ -78,6 +99,7 @@ def storeup_autoSort(request):
             req_dict["userid"] = _current_user_id(request)
         msg = {"code": normal_code, "msg": mes.normal_code, "data": {"currPage": 1, "totalPage": 1, "total": 1, "pageSize": 10, "list": []}}
         msg["data"]["list"], msg["data"]["currPage"], msg["data"]["totalPage"], msg["data"]["total"], msg["data"]["pageSize"] = storeup.page(storeup, storeup, req_dict, request, Q())
+        msg["data"]["list"] = _normalize_storeup_list(msg["data"]["list"])
         return JsonResponse(msg, encoder=CustomJsonEncoder)
 
 
@@ -88,6 +110,7 @@ def storeup_lists(request):
         if Auth().getTokenInfo(request).get("tablename") != "users":
             req_dict["userid"] = _current_user_id(request)
         msg["data"], _, _, _, _ = storeup.page(storeup, storeup, req_dict, request, Q())
+        msg["data"] = _normalize_storeup_list(msg["data"])
         return JsonResponse(msg, encoder=CustomJsonEncoder)
 
 
@@ -95,7 +118,7 @@ def storeup_query(request):
     if request.method in ["POST", "GET"]:
         msg = {"code": normal_code, "msg": mes.normal_code, "data": {}}
         query_result = storeup.objects.filter(**_req_dict(request)).values()
-        msg["data"] = query_result[0] if query_result else {}
+        msg["data"] = _normalize_storeup_record(query_result[0]) if query_result else {}
         return JsonResponse(msg, encoder=CustomJsonEncoder)
 
 
@@ -136,7 +159,7 @@ def storeup_info(request, id_):
     if request.method in ["POST", "GET"]:
         msg = {"code": normal_code, "msg": mes.normal_code, "data": {}}
         data = storeup.getbyid(storeup, storeup, int(id_))
-        msg["data"] = data[0] if data else {}
+        msg["data"] = _normalize_storeup_record(data[0]) if data else {}
         return JsonResponse(msg, encoder=CustomJsonEncoder)
 
 

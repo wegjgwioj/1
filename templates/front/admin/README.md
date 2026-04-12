@@ -2,6 +2,8 @@
 
 这个前端项目基于 `Vue 3 + Vite + Element Plus`，后端为 Django，数据库推荐固定走 Docker 里的 MySQL，方便整套项目迁移到另一台电脑时少踩环境坑。
 
+当前前端已经去掉入口页对外部 CDN 脚本的依赖，`Element Plus / ECharts / 词云` 都改为本地依赖加载；首次拉代码后请务必先执行一次 `npm install`。
+
 ## 环境要求
 
 | 依赖 | 建议版本 | 说明 |

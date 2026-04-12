@@ -26,6 +26,7 @@ from util.baidubce_api import BaiDuBce
 from .config_model import config
 import pandas as pd
 from .models import storeup
+from .ml.data_cleaning import export_cleanse_artifacts, summarize_drivinglog_quality
 
 
 def drivinglog_default(request):
@@ -1300,45 +1301,47 @@ def drivinglog_sectionStat_drivingbehaviorrating(request):
 
 import math
 
-def drivinglog_cleanse(request):
+def drivinglog_cleanse_preview(request):
     if request.method in ["POST", "GET"]:
         msg = {"code": normal_code, "msg": "成功", "data": {}}
         try:
-            list, _, _, total,_ = drivinglog.page(drivinglog, drivinglog, {})
-            df = pd.DataFrame(list,dtype=object)
-#删除空行
-            df['vehiclenumber'].replace([None, '' ], pd.NA,inplace = True)
-            df.dropna(subset=['vehiclenumber'],inplace = True)
-#删除空行
-            df['vehiclemodel'].replace([None, '' ], pd.NA,inplace = True)
-            df.dropna(subset=['vehiclemodel'],inplace = True)
-#删除空行
-            df['batterycapacity'].replace([None, '' ], pd.NA,inplace = True)
-            df.dropna(subset=['batterycapacity'],inplace = True)
-#删除空行
-            df['batterylife'].replace([None, '' ], pd.NA,inplace = True)
-            df.dropna(subset=['batterylife'],inplace = True)
-#删除空行
-            df['accumulatedmileage'].replace([None, '' ], pd.NA,inplace = True)
-            df.dropna(subset=['accumulatedmileage'],inplace = True)
-#删除空行
-            df['starttime'].replace([None, '' ], pd.NA,inplace = True)
-            df.dropna(subset=['starttime'],inplace = True)
-#删除空行
-            df['endtime'].replace([None, '' ], pd.NA,inplace = True)
-            df.dropna(subset=['endtime'],inplace = True)
-            data_list = df.to_dict(orient='records')
-            drivinglog.deletes(drivinglog,drivinglog,ids=[i["id"] for i in list])
-            batchList = []
-            for dl in data_list:
-                filtered_data = {k: v for k, v in dl.items() if v not in [None, '', float('nan')] and (not isinstance(v, float) or not math.isnan(v))}
-                batchList.append(drivinglog(**filtered_data))
-            drivinglog.objects.bulk_create(batchList)
+            summary = summarize_drivinglog_quality(drivinglog.objects.all())
+            msg["data"] = {
+                "total_count": summary["total_count"],
+                "valid_count": summary["valid_count"],
+                "invalid_count": summary["invalid_count"],
+                "issues": summary["issues"],
+                "invalid_rows": summary["invalid_rows"],
+            }
         except Exception as e:
             msg["code"] = other_code
-            msg["msg"] = e.__str__()
+            msg["msg"] = str(e)
+        return JsonResponse(msg, encoder=CustomJsonEncoder)
 
-        return JsonResponse(msg)
+
+def drivinglog_cleanse_apply(request):
+    if request.method in ["POST", "GET"]:
+        msg = {"code": normal_code, "msg": "成功", "data": {}}
+        try:
+            summary = summarize_drivinglog_quality(drivinglog.objects.all())
+            artifact_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "artifacts", "reports")
+            paths = export_cleanse_artifacts(summary, artifact_dir)
+            msg["data"] = {
+                "total_count": summary["total_count"],
+                "valid_count": summary["valid_count"],
+                "invalid_count": summary["invalid_count"],
+                "issues": summary["issues"],
+                "report_path": paths["report_path"],
+                "training_path": paths["training_path"],
+            }
+        except Exception as e:
+            msg["code"] = other_code
+            msg["msg"] = str(e)
+        return JsonResponse(msg, encoder=CustomJsonEncoder)
+
+
+def drivinglog_cleanse(request):
+    return drivinglog_cleanse_apply(request)
 
 
 

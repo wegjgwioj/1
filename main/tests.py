@@ -1,6 +1,8 @@
 # coding:utf-8
 import base64
+import io
 import json
+import os
 from importlib import import_module
 from unittest.mock import Mock, patch
 
@@ -415,6 +417,20 @@ class FeatureSchemaSyncCommandTest(TransactionTestCase):
             cursor.execute("SHOW TABLES LIKE %s", [table_name])
             return cursor.fetchone() is not None
 
+    def _column_exists(self, table_name, column_name):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = %s
+                  AND column_name = %s
+                """,
+                [table_name, column_name],
+            )
+            return cursor.fetchone() is not None
+
     def test_sync_feature_schema_recreates_missing_vehicleknowledge_table(self):
         with connection.cursor() as cursor:
             cursor.execute("DROP TABLE IF EXISTS `vehicleknowledge`")
@@ -424,6 +440,15 @@ class FeatureSchemaSyncCommandTest(TransactionTestCase):
         call_command("sync_feature_schema", verbosity=0)
 
         self.assertTrue(self._table_exists("vehicleknowledge"))
+
+    def test_sync_feature_schema_adds_prediction_upgrade_columns(self):
+        call_command("sync_feature_schema", verbosity=0)
+
+        self.assertTrue(self._column_exists("drivinglogforecast", "predictedpowerconsumption"))
+        self.assertTrue(self._column_exists("drivinglogforecast", "risklevel"))
+        self.assertTrue(self._column_exists("drivinglogforecast", "modelname"))
+        self.assertTrue(self._column_exists("drivinglogforecast", "modelversion"))
+        self.assertTrue(self._column_exists("drivinglogforecast", "majorfactors"))
 
 
 class DemoDataPrepareCommandTest(BaseApiTestCase):
@@ -448,6 +473,145 @@ class DemoDataPrepareCommandTest(BaseApiTestCase):
         self.assertEqual(self.log_b.vehiclemodel, "五菱宏光MINIEV")
         self.assertEqual(self.log_b.vehiclenumber, "MINI-001")
         self.assertEqual(VehicleKnowledge.objects.count(), 0)
+
+
+class DrivinglogCleansePreviewTest(BaseApiTestCase):
+    def test_cleanse_preview_flags_negative_battery_and_time_errors(self):
+        Drivinglog = self.get_model_or_fail("drivinglog")
+        Drivinglog.objects.create(
+            vehiclenumber="BAD-001",
+            vehiclemodel="演示车型",
+            batterycapacity=60,
+            batterylevel=-5,
+            accumulatedmileage=100,
+            starttime="2026-01-02 10:00:00",
+            endtime="2026-01-02 09:00:00",
+            powerconsumption=-3,
+            drivingbehaviorrating=80,
+        )
+
+        response = self.client.post(
+            self.api("drivinglog/cleanse-preview"),
+            data=json.dumps({}),
+            content_type="application/json",
+            **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertGreaterEqual(payload["data"]["invalid_count"], 1)
+        self.assertGreaterEqual(payload["data"]["issues"]["invalid_batterylevel"], 1)
+        self.assertGreaterEqual(payload["data"]["issues"]["time_order_error"], 1)
+        self.assertGreaterEqual(payload["data"]["issues"]["negative_powerconsumption"], 1)
+
+
+class ForecastTrainingCommandTest(BaseApiTestCase):
+    def test_train_ml_models_writes_model_and_metrics_artifacts(self):
+        call_command("train_ml_models", verbosity=0)
+        self.assertTrue(os.path.exists("artifacts/models/drivinglog_power_model.pkl"))
+        self.assertTrue(os.path.exists("artifacts/models/drivinglog_life_model.pkl"))
+        self.assertTrue(os.path.exists("artifacts/reports/ml_metrics.json"))
+
+    def test_train_ml_models_writes_neural_baseline_artifacts(self):
+        call_command("train_ml_models", verbosity=0)
+        self.assertTrue(os.path.exists("artifacts/models/drivinglog_power_mlp_model.pkl"))
+        self.assertTrue(os.path.exists("artifacts/models/drivinglog_life_mlp_model.pkl"))
+        self.assertTrue(os.path.exists("artifacts/reports/ml_comparison_metrics.json"))
+
+
+class ForecastMetricsCommandTest(BaseApiTestCase):
+    def test_evaluate_ml_models_prints_mae_rmse_r2(self):
+        output = io.StringIO()
+        call_command("evaluate_ml_models", stdout=output)
+        content = output.getvalue()
+        self.assertIn("MAE", content)
+        self.assertIn("RMSE", content)
+        self.assertIn("R2", content)
+
+
+class ForecastApiTest(BaseApiTestCase):
+    def setUp(self):
+        super().setUp()
+        if os.path.exists("artifacts"):
+            import shutil
+
+            shutil.rmtree("artifacts")
+
+    def test_predict_endpoint_returns_prediction_and_persists_record(self):
+        response = self.client.post(
+            self.api("drivinglogforecast/predict"),
+            data=json.dumps(
+                {
+                    "vehiclemodel": "Model-A",
+                    "batterycapacity": 90,
+                    "accumulatedmileage": 160,
+                    "drivingbehaviorrating": 82,
+                    "drivingroute": "城市通勤",
+                    "averagespeed": 58,
+                    "batterylevel": 70,
+                    "rapidaccelerationtimes": 1,
+                    "numberofrapiddecelerations": 1,
+                    "numberofspeedingincidents": 0,
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertIn("predictedpowerconsumption", payload["data"])
+        self.assertIn("batterylife", payload["data"])
+        self.assertIn("risklevel", payload["data"])
+        self.assertIn("majorfactors", payload["data"])
+
+        Forecast = self.get_model_or_fail("drivinglogforecast")
+        record = Forecast.objects.latest("id")
+        self.assertIsNotNone(record.predictedpowerconsumption)
+        self.assertTrue(record.risklevel)
+        self.assertTrue(record.modelname)
+
+    def test_metrics_endpoint_returns_trained_targets(self):
+        response = self.client.get(
+            self.api("drivinglogforecast/metrics"),
+            **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertIn("power", payload["data"]["metrics"])
+        self.assertIn("life", payload["data"]["metrics"])
+        self.assertIn("power_mlp", payload["data"]["comparison_metrics"])
+        self.assertIn("life_mlp", payload["data"]["comparison_metrics"])
+
+    def test_scenarios_endpoint_returns_multiple_scenarios(self):
+        response = self.client.post(
+            self.api("drivinglogforecast/scenarios"),
+            data=json.dumps(
+                {
+                    "vehiclemodel": "Model-B",
+                    "batterycapacity": 100,
+                    "accumulatedmileage": 220,
+                    "drivingbehaviorrating": 76,
+                    "drivingroute": "市区-高架混合",
+                    "averagespeed": 64,
+                    "batterylevel": 55,
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertGreaterEqual(len(payload["data"]["scenarios"]), 3)
+        first_scenario = payload["data"]["scenarios"][0]
+        self.assertIn("name", first_scenario)
+        self.assertIn("prediction", first_scenario)
+        self.assertIn("risklevel", first_scenario["prediction"])
 
 
 class StoreupFlowTest(BaseApiTestCase):
@@ -484,6 +648,28 @@ class StoreupFlowTest(BaseApiTestCase):
         )
         self.log_a.refresh_from_db()
         self.assertEqual(getattr(self.log_a, "storeupnum", None), 0)
+
+    def test_storeup_page_fills_fallback_picture_for_legacy_records(self):
+        Storeup = self.get_model_or_fail("storeup")
+        Storeup.objects.create(
+            userid=self.front_user.id,
+            refid=self.log_a.id,
+            tablename="drivinglog",
+            name=self.log_a.vehiclenumber,
+            picture="",
+            type="1",
+            inteltype="vehiclemodel",
+        )
+
+        response = self.client.get(
+            self.api("storeup/page"),
+            {"page": 1, "limit": 10},
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertEqual(payload["data"]["list"][0]["picture"], "upload/image1.jpg")
 
 
 class DiscussFlowTest(BaseApiTestCase):

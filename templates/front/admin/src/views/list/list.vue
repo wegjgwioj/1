@@ -30,7 +30,6 @@ import {
 import { 
   getGroupAPI, 
   deleteExamrecordAPI,
-  alipayAPI,
   getRemindAPI,
   commonTableAPI,
 } from '@/api/common'
@@ -196,6 +195,23 @@ const actionEvent = (button, row) => {
 }
 // 查看评论
 function discuss(button, row) {
+  if (tableName === 'drivinglog' && localStorage.getItem('sessionTable') !== 'users') {
+    dialogTitle.value = '提交评论'
+    dialogComponent.value = ListEdit
+    dialogClass.value = ''
+    dialogData = {
+      type: 'add',
+      id: '',
+      tableName: 'discussdrivinglog',
+      defaultData: {
+        refid: row.id,
+      },
+      okText: '提交',
+      cancleText: '取消',
+    }
+    dialogVisible.value = true
+    return
+  }
   router.push({ path: `/discuss${tableName}`, query: { refid: row.id } })
 }
 async function storeUp(button, row) {
@@ -259,7 +275,7 @@ async function replyEvent(id, content) {
   let { data } = await getDetailAPI(tableName, id)
   let { reply } = data
   let replyData = {
-    id: Date.now,
+    id: Date.now(),
     userid: Number(localStorage.getItem('userid')),
     avatarurl: localStorage.getItem('useravatar'),
     nickname: localStorage.getItem('username'),
@@ -294,9 +310,13 @@ const headerEventMap = {
   downloadTemplate,
   forecast2,
   forecastChart,
+  forecastWorkspace,
   dataClean,
   recommend,
   crawlVehicleKnowledgeBatch,
+}
+function forecastWorkspace() {
+  router.push('/forecastWorkbench')
 }
 const headerEvent = button => {
   let { title, key, type } = button
@@ -431,7 +451,6 @@ async function crossTableHander(button, row) {
   // 跨表的关联数据
   // 审核权限
   let crossOptAudit = table.crossOptAudit[index]
-  // 支付权限
   let crossOptPay = table.crossOptPay[index]
   // 提示
   let tips = table.crossOptButtonTips[index]

@@ -8,6 +8,14 @@ DRIVINGLOG_COLUMN_SQL = {
     "discussnum": "ALTER TABLE `drivinglog` ADD COLUMN `discussnum` int(11) DEFAULT 0 COMMENT '评论数'",
 }
 
+DRIVINGLOGFORECAST_COLUMN_SQL = {
+    "predictedpowerconsumption": "ALTER TABLE `drivinglogforecast` ADD COLUMN `predictedpowerconsumption` double DEFAULT NULL COMMENT '预测耗电量'",
+    "risklevel": "ALTER TABLE `drivinglogforecast` ADD COLUMN `risklevel` varchar(20) DEFAULT NULL COMMENT '风险等级'",
+    "modelname": "ALTER TABLE `drivinglogforecast` ADD COLUMN `modelname` varchar(100) DEFAULT NULL COMMENT '模型名称'",
+    "modelversion": "ALTER TABLE `drivinglogforecast` ADD COLUMN `modelversion` varchar(100) DEFAULT NULL COMMENT '模型版本'",
+    "majorfactors": "ALTER TABLE `drivinglogforecast` ADD COLUMN `majorfactors` longtext COMMENT '主要影响因素'",
+}
+
 FEATURE_TABLE_SQL = {
     "storeup": """
         CREATE TABLE IF NOT EXISTS `storeup` (
@@ -89,6 +97,12 @@ def sync_feature_schema():
                 continue
             cursor.execute(sql)
             actions.append("新增 drivinglog.%s" % column_name)
+
+        for column_name, sql in DRIVINGLOGFORECAST_COLUMN_SQL.items():
+            if column_exists("drivinglogforecast", column_name):
+                continue
+            cursor.execute(sql)
+            actions.append("新增 drivinglogforecast.%s" % column_name)
 
         for table_name, sql in FEATURE_TABLE_SQL.items():
             if table_exists(table_name):

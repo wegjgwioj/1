@@ -1,0 +1,18 @@
+{
+  "power": {
+    "target": "powerconsumption",
+    "sample_count": 161,
+    "evaluation_mode": "holdout",
+    "MAE": 17.92757575757576,
+    "RMSE": 26.835190458979366,
+    "R2": 0.5803376751895712
+  },
+  "life": {
+    "target": "batterylife",
+    "sample_count": 161,
+    "evaluation_mode": "holdout",
+    "MAE": 27.225191831150774,
+    "RMSE": 35.73027777776954,
+    "R2": -0.16819216813380478
+  }
+}

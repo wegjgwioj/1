@@ -228,6 +228,39 @@ export function predictAPI(tableName, data) {
     data,
   })
 }
+
+/**
+ * @description 新版预测工作台
+ */
+export function predictWorkspaceAPI(tableName, data) {
+  return http({
+    url: `${tableName}/predict`,
+    method: 'post',
+    data,
+  })
+}
+
+/**
+ * @description 预测模型指标
+ */
+export function getForecastMetricsAPI(tableName, params = {}) {
+  return http({
+    url: `${tableName}/metrics`,
+    method: 'get',
+    params,
+  })
+}
+
+/**
+ * @description 预测场景模拟
+ */
+export function getForecastScenariosAPI(tableName, data) {
+  return http({
+    url: `${tableName}/scenarios`,
+    method: 'post',
+    data,
+  })
+}
 /**
  * @description 预测完后的图表
  */

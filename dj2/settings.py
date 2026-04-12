@@ -12,10 +12,30 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 import os
 from concurrent.futures.thread import ThreadPoolExecutor
 executor = ThreadPoolExecutor(20)
-from util.configread import config_read
+from util.configread import config_read, redis_config_read
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _load_env_overrides():
+    candidates = [
+        os.path.join(BASE_DIR, '.env'),
+        os.path.join(os.getcwd(), '.env'),
+    ]
+    for candidate in candidates:
+        if not os.path.exists(candidate):
+            continue
+        with open(candidate, encoding='utf-8') as env_file:
+            for raw_line in env_file:
+                line = raw_line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, value = line.split('=', 1)
+                os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+_load_env_overrides()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
@@ -90,12 +110,12 @@ TEMPLATES = [
 WSGI_APPLICATION = 'dj2.wsgi.application'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_USE_TLS = False
-EMAIL_USE_SSL = True
-EMAIL_HOST = 'smtp.qq.com'
-EMAIL_PORT = 465
-EMAIL_HOST_USER = 'yclw9@qq.com'
-EMAIL_HOST_PASSWORD = 'mhbrkuayvkkgbijd'
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'false').lower() in {'1', 'true', 'yes'}
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'true').lower() in {'1', 'true', 'yes'}
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.qq.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '465'))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 
 # Database
 # https://docs.djangoproject.com/en/2.0/ref/settings/#databases
@@ -108,8 +128,8 @@ EMAIL_HOST_PASSWORD = 'mhbrkuayvkkgbijd'
 # }
 
 dbtype, host, port, user, passwd, dbName, charset,hasHadoop = config_read("config.ini")
+redis_host, redis_port, redis_password, redis_db = redis_config_read("config.ini")
 dbName=dbName.replace(" ","").strip()
-print(dbtype, host, port, user, passwd, dbName, charset)
 
 if dbtype == 'mysql':
     DATABASES = {
@@ -138,6 +158,27 @@ if dbtype == 'mysql':
 else:
     print("请使用mysql5.5数据库")
     os._exit(1)
+
+if redis_host and redis_port:
+    redis_auth = f":{redis_password}@" if redis_password else ""
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": f"redis://{redis_auth}{redis_host}:{redis_port}/{redis_db}",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "IGNORE_EXCEPTIONS": True,
+            },
+            "KEY_PREFIX": "ev_log",
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "ev-log-local-cache",
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/2.0/ref/settings/#auth-password-validators
@@ -188,20 +229,3 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # 自定义
 if os.path.isdir(MEDIA_ROOT) == False:
     os.mkdir(MEDIA_ROOT)
 
-ALIPAY_APP_ID = '9021000127605975'
-
-
-def _read_text_if_exists(path, default=""):
-    if os.path.exists(path):
-        with open(path, encoding="utf-8") as file_obj:
-            return file_obj.read()
-    return default
-
-
-APP_PRIVATE_KEY_STRING = _read_text_if_exists(
-    '{}/util/alipay_key/app_private_2048.txt'.format(BASE_DIR)
-)
-ALIPAY_PUBLIC_KEY_STRING = _read_text_if_exists(
-    '{}/util/alipay_key/alipay_public_2048.txt'.format(BASE_DIR)
-)
-ALIPAY_SIGN_TYPE = 'RSA2'
