@@ -38,8 +38,12 @@ datasets/
 # Local docs / thesis / plan files
 docs/*
 !docs/README.md
+!docs/*.md
+!docs/plans/
+docs/plans/*
+!docs/plans/2026-04-14-项目讲解稿设计.md
+!docs/plans/2026-04-14-项目讲解稿实施计划.md
 docs/待提交/
-docs/plans/
 
 # Secrets
 util/alipay_key/*.txt
