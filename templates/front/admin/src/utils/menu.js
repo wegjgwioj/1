@@ -12,7 +12,7 @@ const roleMenus = [
   {
     backMenu: [
       {
-        menu: '行车日志管理',
+        menu: '运行日志',
         child: [
           {
             allButtons: ['新增', '查看', '修改', '删除', '偏好推荐', '评论', '收藏/取消', '电池容量分析', '电池寿命', '路线分布', '驾驶评分', '节能建议', '导出', '导入', '上传模板', '下载模板', '首页总数', '首页统计'],
@@ -25,7 +25,7 @@ const roleMenus = [
         ],
       },
       {
-        menu: '车型知识管理',
+        menu: '车型知识',
         child: [
           {
             allButtons: ['查看', '重新采集', '批量采集'],
@@ -59,13 +59,13 @@ const roleMenus = [
         ],
       },
       {
-        menu: '电池寿命预测管理',
+        menu: '预测分析',
         child: [
           {
             allButtons: ['新增', '查看', '预测', '预测工作台'],
             appFrontIcon: 'cuIcon-album',
             buttons: ['新增', '查看', '预测', '预测工作台'],
-            menu: '电池寿命预测',
+            menu: '预测记录',
             menuJump: '列表',
             tableName: 'drivinglogforecast',
           },
@@ -116,7 +116,7 @@ const roleMenus = [
         ],
       },
       {
-        menu: '行车日志管理',
+        menu: '运行日志',
         child: [
           {
             allButtons: ['新增', '查看', '修改', '删除', '偏好推荐', '评论', '收藏/取消', '电池容量分析', '电池寿命', '路线分布', '驾驶评分', '节能建议', '导出', '导入', '上传模板', '下载模板', '首页总数', '首页统计'],
@@ -129,7 +129,7 @@ const roleMenus = [
         ],
       },
       {
-        menu: '车型知识管理',
+        menu: '车型知识',
         child: [
           {
             allButtons: ['新增', '查看', '修改', '删除', '重新采集', '批量采集'],
@@ -163,13 +163,13 @@ const roleMenus = [
         ],
       },
       {
-        menu: '电池寿命预测管理',
+        menu: '预测分析',
         child: [
           {
             allButtons: ['新增', '查看', '修改', '删除', '预测', '预测工作台'],
             appFrontIcon: 'cuIcon-album',
             buttons: ['新增', '查看', '修改', '删除', '预测', '预测工作台'],
-            menu: '电池寿命预测',
+            menu: '预测记录',
             menuJump: '列表',
             tableName: 'drivinglogforecast',
           },

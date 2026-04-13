@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 import { apiBaseUrl } from './src/utils/base'
@@ -14,7 +14,14 @@ function createVendorChunkName(prefix, id, marker) {
   return `${prefix}-${safeGroup}`
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const apiProxyTarget = env.VITE_API_BASE_URL || process.env.VITE_API_BASE_URL || apiBaseUrl
+  const frontendHost = env.APP_FRONTEND_HOST || process.env.APP_FRONTEND_HOST || '0.0.0.0'
+  const frontendPort = Number(env.APP_FRONTEND_PORT || process.env.APP_FRONTEND_PORT || 8081)
+  const frontendOpen = (env.APP_OPEN_BROWSER || process.env.APP_OPEN_BROWSER || 'false').toLowerCase() === 'true'
+
+  return {
   plugins: [
     vue(),
   ],
@@ -29,16 +36,16 @@ export default defineConfig({
   server: {
 
     // 服务器默认端口是8080，前端默认8081，所以需要代理
-    port: 8081,
-    host: "0.0.0.0",
+    port: frontendPort,
+    host: frontendHost,
 
     // 自动打开浏览器
-    open: false, 
+    open: frontendOpen, 
 
     // 设置代理
     proxy: {
       "/diandong5k56la1f": {
-        target: apiBaseUrl,
+        target: apiProxyTarget,
         changeOrigin: true,
       },
     },
@@ -88,4 +95,5 @@ export default defineConfig({
       },
     },
   },
+  }
 })

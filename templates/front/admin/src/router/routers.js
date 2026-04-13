@@ -74,14 +74,14 @@ const routes = [
         path: '/drivinglogforecast',
         component: ListPage,
         meta: {
-          title: "电池寿命预测",
+          title: "预测记录",
         },        
       },
       {
         path: '/forecastWorkbench',
         component: () => import('@/views/forecast-workbench/index.vue'),
         meta: {
-          title: '预测工作台',
+          title: '预测分析中心',
         },
       },
       {

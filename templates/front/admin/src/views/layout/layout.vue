@@ -1,20 +1,14 @@
 <script setup>
 import '@/style/header.scss'
-import { computed, provide, ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, provide, ref, shallowRef, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useMenusVersion } from '@/store'
 
 import BreadCrumb from './BreadCrumb.vue'
-import Custom from './Custom.vue'
-import HomeTitle from './HomeTitle.vue'
 import LayoutContent from './LayoutContent.vue'
 import LayoutMenu from './LayoutMenu.vue'
-import Notice from './Notice.vue'
 import RoleMenu from './RoleMenu.vue'
-import Weather from './Weather.vue'
-import MenuButton from './MenuButton.vue'
 
-import { getDetailAPI, updateAPI, getPageAPI } from '@/api/list'
 import { getSessionAPI, logoutAPI } from '@/api/login'
 import { commonTableAPI, getMysqldumpAPI } from '@/api/common'
 import { useUserInfo } from '@/store'
@@ -23,6 +17,7 @@ import { clearFilePath } from '@/utils/getFilePath'
 import { isAuth } from '@/utils/auth'
 import { roleList } from '@/utils/role'
 import { loop } from '@/utils/auth'
+import { clearAdminSession } from '@/utils/adminSession'
 import axios from 'axios'
 import base from '@/utils/base'
 
@@ -166,7 +161,7 @@ function initMenuList() {
         } catch (error) {}
 
         // 前端登出
-        localStorage.clear()
+        clearAdminSession(localStorage, sessionStorage)
 
         router.push('/login')
       },
@@ -378,28 +373,28 @@ provide('header', {
 
 <template>
   <div class="layout-page" :style="`--menu-width--: ${width}px`">
+    <LayoutMenu class="menu-wrapper" />
+
     <div class="header-wrapper">
-  <HomeTitle />
-   <div class="header-title">
-    <div class="title">{{ projectName }}</div>
-  </div>
-    <div class="right">
-  <Notice />
-      <LayoutMenu class="menu-wrapper" />
-        <Weather />
-  <RoleMenu />
+      <div class="header-shell">
+        <div class="header-intro">
+          <div class="header-eyebrow">车辆运行监测平台</div>
+          <div class="header-title">{{ projectName }}</div>
+          <div class="header-subtitle">
+            电动汽车行车日志、车型知识、互动反馈与预测分析的一体化工作平台
+          </div>
+        </div>
+        <div class="right">
+          <RoleMenu />
+        </div>
+      </div>
     </div>
 
-</div>
-
-<div class="main-wrapper">
-<div class="header2-wrapper">
-  <BreadCrumb />
-
-</div>
-  <LayoutContent />
-</div>
-<Custom />
-
+    <div class="main-wrapper">
+      <div class="header2-wrapper">
+        <BreadCrumb />
+      </div>
+      <LayoutContent />
+    </div>
   </div>
 </template>

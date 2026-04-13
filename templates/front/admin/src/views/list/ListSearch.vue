@@ -74,6 +74,13 @@ function toSearch() {
   emits('search', data)
 }
 
+function resetSearch() {
+  columns.forEach(column => {
+    ruleForm[column.columnName] = ''
+  })
+  emits('search', {})
+}
+
 let hasSearch = computed(() => !!columns.length)
 </script>
 
@@ -98,7 +105,7 @@ let hasSearch = computed(() => !!columns.length)
       <div class="el-form-item searchbtn">
         <el-button native-type="submit" v-if="hasSearch">{{ buttonName }}</el-button>
         <el-button native-type="submit" v-else icon="Refresh">刷新</el-button>
-
+        <el-button plain @click="resetSearch">重置</el-button>
       </div>
     </el-form>
   </div>

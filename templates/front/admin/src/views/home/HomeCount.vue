@@ -11,79 +11,48 @@ const { roleCountList } = inject('home')
 </script>
 <template>
   <div class="statis-wrapper" v-if="roleCountList.length">
-    <div v-for="(item, index) in roleCountList" :key="item.comments" class="statis-box-common" :class="'statis-box' + (index + 1)">
-      <!-- 图标 -->
-      <div class="icon-box" :class="'icon-box' + (index + 1)"></div>
-
-      <!-- 文字 -->
+    <div v-for="item in roleCountList" :key="item.comments" class="statis-box-common">
       <div class="info-box">
-        <div class="label">
-          {{ item.comments }}
-          <span>总数</span>
-        </div>
+        <div class="label">{{ item.comments }}</div>
+        <div class="meta">当前累计记录</div>
         <div class="count">{{ item.count }}</div>
       </div>
-      <div :class="'right-img' + (index + 1)">
-       </div>
     </div>
   </div>
 </template>
 <style>
 .statis-box-common {
-    flex: none;
-    display: flex;
-    flex-wrap: wrap;
-    box-shadow: none;
-    padding: 30px 20px;
-    border-radius: 4px;
-    background: url(http://codegen.caihongy.cn/20251029/b64c87bc2e244167a420cba559adde1e.png) no-repeat center / 100% 100%;
-    width: calc(25% - 15px);
-    height:215px;
-    padding:30px;
-  .icon {
-    color: var(--btn-bg-color-);
-    font-size: 46px;
-  }
-
+  min-height: 136px;
+  padding: 22px 24px;
+  border-radius: var(--sys-radius-lg);
+  background: linear-gradient(180deg, #fff 0%, #f8fbff 100%);
+  border: 1px solid var(--sys-border);
+  box-shadow: var(--sys-shadow-sm);
+  
   .info-box {
-    flex: 1 1 auto;
-    width: auto;
     display: flex;
-    align-items: flex-start;
     flex-direction: column;
-    justify-content: center;
-    order: 1;
-    gap: 10px;
-
-    .count {
-      margin: 0;
-      font-size: 26px;
-      color: #F95F3F;
-      font-weight: bold;
-      height: auto;
-
-      span {
-        font-size: 14px;
-        font-weight: 500;
-      }
-    }
-
-    .label {
-      font-size: 26px;
-      order:1;
-      color: #F95F3F;
-      height: auto;
-    }
+    gap: 8px;
   }
-}
-.statis-box2{
-  background: url(http://codegen.caihongy.cn/20251029/5d2960f7a71e4cc4bb5e61045cadf8cc.png) no-repeat center / 100% 100%;
-}
-.statis-box3{
-  background: url(http://codegen.caihongy.cn/20251029/3eeadc4914ec4e94aa6655fa194c8e84.png) no-repeat center / 100% 100%;
-}
-.statis-box4{
-  background: url(http://codegen.caihongy.cn/20251029/f5613b2a806e44919c9c75221a7f8c1c.png) no-repeat center / 100% 100%;
+
+  .meta {
+    color: var(--sys-text-faint);
+    font-size: 12px;
+  }
+
+  .count {
+    margin-top: 10px;
+    color: var(--sys-text);
+    font-size: 34px;
+    line-height: 1;
+    font-weight: 700;
+  }
+
+  .label {
+    color: var(--sys-text-soft);
+    font-size: 15px;
+    font-weight: 600;
+  }
 }
 
 </style>

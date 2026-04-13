@@ -2,3 +2,47 @@
 @use './login.scss';
 @use './add.scss';
 
+:root {
+  --sys-bg: #f3f6fb;
+  --sys-bg-soft: #eef3f9;
+  --sys-panel: #ffffff;
+  --sys-panel-muted: #f7f9fc;
+  --sys-text: #1c3046;
+  --sys-text-soft: #677a90;
+  --sys-text-faint: #8fa0b4;
+  --sys-primary: #2375d8;
+  --sys-primary-strong: #1a5fb1;
+  --sys-primary-soft: #e8f1fd;
+  --sys-accent: #0f9eb3;
+  --sys-border: #d8e2ee;
+  --sys-border-strong: #c3d2e3;
+  --sys-danger: #d15353;
+  --sys-warning: #c7861e;
+  --sys-success: #2c8b5e;
+  --sys-shadow-sm: 0 8px 20px rgba(22, 46, 77, 0.06);
+  --sys-shadow-md: 0 14px 34px rgba(22, 46, 77, 0.08);
+  --sys-radius-lg: 20px;
+  --sys-radius-md: 14px;
+  --sys-radius-sm: 10px;
+  --sys-space-1: 8px;
+  --sys-space-2: 12px;
+  --sys-space-3: 16px;
+  --sys-space-4: 20px;
+  --sys-space-5: 28px;
+  --btn-bg-color-: var(--sys-primary);
+  --btn-font-color-: #ffffff;
+}
+
+.el-button {
+  border-radius: 10px;
+}
+
+.el-card,
+.el-dialog,
+.el-table,
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  border-radius: var(--sys-radius-sm);
+}
+

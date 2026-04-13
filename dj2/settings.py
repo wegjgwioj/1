@@ -13,6 +13,10 @@ import os
 from concurrent.futures.thread import ThreadPoolExecutor
 executor = ThreadPoolExecutor(20)
 from util.configread import config_read, redis_config_read
+try:
+    import redis
+except Exception:  # pragma: no cover - optional dependency guard
+    redis = None
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -131,6 +135,23 @@ dbtype, host, port, user, passwd, dbName, charset,hasHadoop = config_read("confi
 redis_host, redis_port, redis_password, redis_db = redis_config_read("config.ini")
 dbName=dbName.replace(" ","").strip()
 
+
+def _redis_runtime_available(host, port, password, db):
+    if not (host and port and redis):
+        return False
+    try:
+        client = redis.Redis(
+            host=host,
+            port=int(port),
+            password=password or None,
+            db=int(db or 0),
+            socket_connect_timeout=1,
+            socket_timeout=1,
+        )
+        return bool(client.ping())
+    except Exception:
+        return False
+
 if dbtype == 'mysql':
     test_collation = 'utf8mb4_unicode_ci' if charset == 'utf8mb4' else 'utf8_general_ci'
     DATABASES = {
@@ -160,7 +181,7 @@ else:
     print("请使用mysql5.5数据库")
     os._exit(1)
 
-if redis_host and redis_port:
+if redis_host and redis_port and _redis_runtime_available(redis_host, redis_port, redis_password, redis_db):
     redis_auth = f":{redis_password}@" if redis_password else ""
     CACHES = {
         "default": {
@@ -174,6 +195,8 @@ if redis_host and redis_port:
         }
     }
 else:
+    if redis_host and redis_port:
+        print("Redis 不可用或认证失败，已自动回退到本地缓存。")
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",

@@ -4,6 +4,7 @@
 
 import axios from "axios";
 import router from "@/router";
+import { clearAdminSession } from "@/utils/adminSession";
 
 const http = axios.create({
   // 如果请求时间超过 `timeout` 的值，则请求会被中断
@@ -48,7 +49,7 @@ http.interceptors.response.use(
 
       // 401需要是用户没有登录
       case 401:
-        localStorage.clear();
+        clearAdminSession(localStorage, sessionStorage);
         ElMessage({
           message: '登录凭证失效，请先登录',
           grouping: true,
@@ -68,7 +69,7 @@ http.interceptors.response.use(
     // 根据url判断是：获取当前登录的用户信息的api url: users/session, yonghu/session
     let isSession = /\/session$/.test(url);
     if (isSession) {
-      localStorage.clear();
+      clearAdminSession(localStorage, sessionStorage);
       router.push("/login");
     }
 

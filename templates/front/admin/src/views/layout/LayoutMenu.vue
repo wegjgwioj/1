@@ -28,13 +28,11 @@ watch(
 <template>
   <!-- 菜单 -->
   <aside>
-      <div class="header-title2">
-    <div class="logo" v-if="$projectImages.logo">
-      <img :src="$projectImages.logo" draggable="false" />
+    <div class="menu-brand">
+      <div class="menu-brand-mark">EV</div>
+      <div class="menu-brand-title">运行监测与预测平台</div>
+      <div class="menu-brand-subtitle">日志采集、知识补全、风险评估与模型分析</div>
     </div>
-
-    <div class="title">{{ projectName }}</div>
-  </div>
     <el-scrollbar>
       <el-menu
         popper-class="menu-poper"
@@ -110,24 +108,9 @@ watch(
 
 <style>
 .menu-wrapper {
-  /* 菜单 */
   .el-menu {
-    /* 悬浮背景色 */
-    /* --el-menu-hover-bg-color: #DEF6ED; */
-    /* 激活字体颜色 */
-    /* --el-menu-active-color: var(--btn-bg-color-); */
     border-right: none;
     overflow: hidden;
-  }
-
-  .el-menu--vertical {
-    padding-bottom: 42px;
-  }
-  /* 折叠按钮 */
-  .collapse-btn {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
   }
 }
 </style>

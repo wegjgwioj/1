@@ -53,19 +53,26 @@ const { roleMenus, userName, userAvatar, roleMenuEvent, notreadnum } = inject('h
     display: flex;
     justify-content: center;
     align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid var(--sys-border);
+    box-shadow: var(--sys-shadow-sm);
   }
 
   .img {
-    width: 50px;
-    height: 50px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
     border: 1px solid transparent;
-    margin-right: 10px;
   }
 
   .name {
-    display: none;
+    display: inline;
     font-size: 14px;
-    color: inherit;
+    font-weight: 600;
+    color: var(--sys-text);
   }
 }
 </style>

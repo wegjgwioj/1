@@ -11,6 +11,42 @@ async function readProjectFile(relativePath) {
   return readFile(path.join(projectRoot, relativePath), 'utf-8')
 }
 
+test('admin session utility removes only admin scoped auth keys', async () => {
+  const sessionModule = await import('../src/utils/adminSession.js')
+  const calls = []
+  const storage = {
+    removeItem(key) {
+      calls.push(key)
+    },
+  }
+
+  sessionModule.clearAdminSession(storage)
+
+  assert.deepEqual(calls, sessionModule.ADMIN_SESSION_KEYS)
+})
+
+test('admin session utility also clears session storage when requested', async () => {
+  const sessionModule = await import('../src/utils/adminSession.js')
+  const localCalls = []
+  const sessionCalls = []
+
+  sessionModule.clearAdminSession(
+    {
+      removeItem(key) {
+        localCalls.push(key)
+      },
+    },
+    {
+      removeItem(key) {
+        sessionCalls.push(key)
+      },
+    },
+  )
+
+  assert.deepEqual(localCalls, sessionModule.ADMIN_SESSION_KEYS)
+  assert.deepEqual(sessionCalls, sessionModule.ADMIN_SESSION_KEYS)
+})
+
 test('frontend entry does not load external codegen CDN scripts', async () => {
   const html = await readProjectFile('templates/front/admin/index.html')
   assert.doesNotMatch(html, /codegen\.caihongy\.cn/i)
@@ -55,4 +91,17 @@ test('sql seed data does not contain third party API secrets', async () => {
   assert.doesNotMatch(sql, /\\"appId\\":\\"\d{6,}\\"/)
   assert.doesNotMatch(sql, /\\"apiKey\\":\\"[^"]{8,}\\"/)
   assert.doesNotMatch(sql, /\\"secretKey\\":\\"[^"]{8,}\\"/)
+})
+
+test('login, layout and http utilities use shared admin session cleanup instead of global clear', async () => {
+  const loginView = await readProjectFile('templates/front/admin/src/views/login/login.vue')
+  const layoutView = await readProjectFile('templates/front/admin/src/views/layout/layout.vue')
+  const httpUtil = await readProjectFile('templates/front/admin/src/utils/http.js')
+
+  assert.match(loginView, /clearAdminSession/)
+  assert.match(layoutView, /clearAdminSession/)
+  assert.match(httpUtil, /clearAdminSession/)
+
+  assert.doesNotMatch(layoutView, /localStorage\.clear\(\)/)
+  assert.doesNotMatch(httpUtil, /localStorage\.clear\(\)/)
 })

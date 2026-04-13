@@ -118,6 +118,51 @@ class ConfigReadTest(unittest.TestCase):
             self.assertEqual(values[2], "redispass")
             self.assertEqual(values[3], 2)
 
+    def test_redis_config_read_keeps_empty_password_from_dotenv(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            config_path = os.path.join(tempdir, "config.ini")
+            env_path = os.path.join(tempdir, ".env")
+            with open(config_path, "w", encoding="utf-8") as config_file:
+                config_file.write(
+                    textwrap.dedent(
+                        """
+                        [sql]
+                        type = mysql
+                        host = 127.0.0.1
+                        port = 3306
+                        user = root
+                        passwd = 123456
+                        db = diandong5k56la1f
+                        charset = utf8mb4
+                        hasHadoop = spark
+
+                        [redis]
+                        host = 127.0.0.1
+                        port = 6379
+                        passwd = 123456
+                        """
+                    ).strip()
+                )
+            with open(env_path, "w", encoding="utf-8") as env_file:
+                env_file.write(
+                    textwrap.dedent(
+                        """
+                        REDIS_HOST=redis
+                        REDIS_PORT=6379
+                        REDIS_PASSWORD=
+                        REDIS_DB=0
+                        """
+                    ).strip()
+                )
+
+            with patch.dict(os.environ, {}, clear=True):
+                values = redis_config_read(config_path)
+
+            self.assertEqual(values[0], "redis")
+            self.assertEqual(values[1], 6379)
+            self.assertEqual(values[2], "")
+            self.assertEqual(values[3], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

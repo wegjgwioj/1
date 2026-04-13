@@ -20,6 +20,7 @@ import { getAvatar } from '@/utils/index'
 import { clearFilePath } from '@/utils/getFilePath'
 import { loginAPI, faceLoginAPI, getSessionAPI } from '@/api/login'
 import { initMenus } from '@/utils/menu'
+import { clearAdminSession } from '@/utils/adminSession'
 import { isAuth } from "@/utils/auth";
 
 const router = useRouter()
@@ -137,6 +138,8 @@ watch(
 
 // 登录成功后，做一些缓存等事件
 async function loginSucessEvent(token, tableName) {
+  clearAdminSession(localStorage, sessionStorage)
+
   // 缓存一些用户信息到localstorage
   // 第一步必须缓存token，因为后续api需要从localStorage.getItem('Token')取
   localStorage.setItem('Token', token)

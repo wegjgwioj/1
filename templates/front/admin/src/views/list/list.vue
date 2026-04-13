@@ -61,6 +61,17 @@ const columns = computed(() =>
 const tableButtons = computed(() => getTableButtons(tableName.value, menuTableName.value))
 const headerButtons = computed(() => getHeaderButtons(tableName.value, menuTableName.value))
 const listPageKey = computed(() => `${tableName.value}:${route.params.type || ''}`)
+const pageDescriptions = {
+  drivinglog: '管理车辆运行日志、里程、路线与驾驶评分等核心业务记录。',
+  vehicleknowledge: '维护车型知识库，为日志解释和系统展示提供补充信息。',
+  storeup: '查看当前账号的收藏记录，追踪用户关注的核心数据。',
+  discussdrivinglog: '查看评论反馈、管理员回复和互动闭环情况。',
+  drivinglogforecast: '统一管理预测记录，并进入预测工作台进行分析展示。',
+  user: '维护前台用户基础信息。',
+  users: '维护后台管理员账号和角色信息。',
+}
+const pageTitle = computed(() => route.meta.title || tableName.value || '数据工作台')
+const pageDescription = computed(() => pageDescriptions[tableName.value] || '查看、筛选并维护当前模块的数据记录。')
 
 function createDefaultSortData() {
   if (!table.value.sortName) {
@@ -845,6 +856,17 @@ watch([currentPage, pageSize, sortData, searchData, listMode, () => route.fullPa
 
 <template>
   <div class="list-wrapper">
+    <div class="list-page-head">
+      <div class="list-page-head-main">
+        <div class="list-page-title">{{ pageTitle }}</div>
+        <div class="list-page-desc">{{ pageDescription }}</div>
+      </div>
+      <div class="list-page-head-side">
+        <div class="list-page-tag">{{ listMode === 'recommend' ? '偏好推荐模式' : '标准工作台' }}</div>
+        <div class="list-page-hint">以筛选、维护、分析为主的统一数据工作台</div>
+      </div>
+    </div>
+
     <!-- 搜索 -->
     <ListSearch :key="listPageKey" :tableName="tableName" buttonName="查询" @search="searchEvent" />
 
