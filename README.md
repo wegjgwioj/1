@@ -23,13 +23,16 @@
 - 多源车型知识采集与知识库页面
 - 用户相关半成品接口修复
 - Docker 化数据库初始化
+- 机器学习主模型预测工作台
+- 深度学习对比实验链路（当前环境无 PyTorch 时自动回退为轻量神经网络近似实现）
+- NASA 公开电池寿命数据集 SOH/RUL 真实寿命实验链路
 
 ## 目录说明
 
 - `main/`：Django 业务代码
 - `templates/front/admin/`：Vue 3 管理端
 - `db/`：数据库初始化 SQL
-- `docs/plans/`：本次补齐的设计与实施计划
+- `docs/README.md`：文档目录说明
 
 ## 爬虫说明
 
@@ -50,7 +53,7 @@
 
 ## 推荐启动方式
 
-### 1. 准备环境变量
+### 1. 准备环境变量与默认字符集
 
 首次运行先在项目根目录执行：
 
@@ -66,6 +69,12 @@ copy .env.example .env
 - `EMAIL_HOST_PASSWORD`
 - `EMAIL_USE_SSL`
 - `EMAIL_USE_TLS`
+
+默认数据库字符集现在统一按 `utf8mb4` 处理：
+
+- `config.ini` 默认已经改成 `utf8mb4`
+- 即使旧配置里仍写成 `utf8`，Django 也会自动归一到 `utf8mb4`
+- 新建测试库和初始化建库脚本也会按 `utf8mb4` / `utf8mb4_unicode_ci` 走，减少中文乱码和排序规则冲突
 
 ### 2. 启动 Docker 依赖服务
 
@@ -88,7 +97,7 @@ docker compose up -d db redis
 python manage.py sync_feature_schema
 ```
 
-也可以直接双击仓库根目录下的 `升级数据库.bat`。
+也可以直接双击仓库根目录下的 `升级数据库.bat`，它现在也会一并拉起 `db + redis`。
 
 数据库默认使用：
 
@@ -105,7 +114,15 @@ Redis 默认使用：
 - `REDIS_PASSWORD=123456`
 - `REDIS_DB=1`
 
-### 3. 安装后端依赖
+### 3. 创建并安装后端虚拟环境
+
+先创建 `.venv`：
+
+```bash
+py -3.11 -m venv .venv
+```
+
+再安装依赖并初始化数据库：
 
 ```bash
 .\.venv\Scripts\activate
@@ -121,6 +138,7 @@ python manage.py sync_feature_schema
 - Django 会优先使用 Redis 作为缓存和 session 后端；如果 Redis 未配置，会自动回退到本地内存缓存
 - `manage.py` 现在默认不会自动打开浏览器
 - `sync_feature_schema` 会把旧库缺失的收藏、评论、车型知识等表结构补齐，适合已经存在的 Docker 数据卷
+- 根目录下的 `安装.bat`、`升级数据库.bat`、`准备答辩数据.bat`、`运行.bat` 现在都要求先存在 `.venv`
 
 ### 4. 启动后端
 
@@ -134,6 +152,40 @@ python manage.py runserver --insecure 0.0.0.0:8080 --noreload
 set OPEN_ADMIN_ON_RUNSERVER=1
 python manage.py runserver --insecure 0.0.0.0:8080 --noreload
 ```
+
+### 4.1 训练与对比实验命令
+
+机器学习主模型：
+
+```bash
+python manage.py train_ml_models
+python manage.py evaluate_ml_models
+```
+
+深度学习对比链路：
+
+```bash
+python manage.py prepare_sequence_data
+python manage.py train_dl_model
+python manage.py compare_models
+```
+
+NASA 真实电池寿命实验：
+
+```bash
+python manage.py prepare_nasa_battery_dataset --source-dir datasets\nasa_battery --download
+python manage.py train_nasa_battery_models
+```
+
+说明：
+
+- 预测工作台会继续以机器学习结果作为主展示结果
+- `compare_models` 和前端对比面板会同时展示 `ML / DL` 两组输出
+- 如果当前 Python 环境没有安装 `torch`，系统会自动回退到 `sklearn MLP fallback`，页面和接口仍可正常演示
+- 如果你想启用真正的 `PyTorch GRU` 对比模型，再额外安装 `torch`
+- `prepare_nasa_battery_dataset` 会下载并解析 NASA PCoE Battery Aging 数据集，数据不提交到仓库，默认放在 `datasets/nasa_battery/`
+- NASA 实验输出位置是 `artifacts/battery_life/`，包括 SOH/RUL 模型、指标报告、容量衰减曲线和预测对比图
+- 答辩时要区分两条线：行车日志预测是业务系统主功能；NASA 实验是公开真实电池寿命 SOH/RUL 对比实验，不与行车日志代理标签混为一谈
 
 ### 5. 启动前端开发环境
 
@@ -162,6 +214,7 @@ cd templates/front/admin && npm run build
 
 ## 说明
 
-- 旧的批处理脚本仍然保留，但建议优先按上面的 Docker 流程使用
+- `安装.bat`、`升级数据库.bat`、`准备答辩数据.bat` 都已经统一改成优先拉起 `db + redis`
+- `准备答辩数据.bat` 会先执行 `sync_feature_schema` 再整理演示数据，适合新库或旧库补功能后直接收口
 - 如果你需要彻底重建容器数据，可以执行 `docker compose down -v` 后再重新 `docker compose up -d db redis`
 - 如果后面还要继续收口，最值得做的是人工走查一遍前端页面交互和权限细节

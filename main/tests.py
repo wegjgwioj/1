@@ -518,6 +518,46 @@ class ForecastTrainingCommandTest(BaseApiTestCase):
         self.assertTrue(os.path.exists("artifacts/models/drivinglog_life_mlp_model.pkl"))
         self.assertTrue(os.path.exists("artifacts/reports/ml_comparison_metrics.json"))
 
+    @patch("main.management.commands.train_ml_models.save_ml_artifacts")
+    @patch("main.management.commands.train_ml_models.train_neural_baseline_bundle")
+    @patch("main.management.commands.train_ml_models.train_ml_bundle")
+    def test_train_ml_models_supports_explicit_raw_excel_source(
+        self,
+        mock_train_ml_bundle,
+        mock_train_neural_baseline_bundle,
+        mock_save_ml_artifacts,
+    ):
+        mock_train_ml_bundle.return_value = (
+            {"power": object(), "life": object()},
+            {"power": {"MAE": 1.0}, "life": {"MAE": 2.0}},
+            {"source_type": "raw_excel", "sample_count": 21507},
+        )
+        mock_train_neural_baseline_bundle.return_value = (
+            {"power_mlp": object(), "life_mlp": object()},
+            {"power_mlp": {"MAE": 1.1}, "life_mlp": {"MAE": 2.1}},
+            {"source_type": "raw_excel", "sample_count": 21507},
+        )
+        mock_save_ml_artifacts.return_value = {
+            "metrics": "artifacts/reports/ml_metrics.json",
+            "comparison_metrics": "artifacts/reports/ml_comparison_metrics.json",
+        }
+
+        call_command(
+            "train_ml_models",
+            "--source",
+            "excel",
+            "--excel-path",
+            "docs/待提交/新数据21507条【备份】.xlsx",
+            verbosity=0,
+        )
+
+        ml_kwargs = mock_train_ml_bundle.call_args.kwargs
+        mlp_kwargs = mock_train_neural_baseline_bundle.call_args.kwargs
+        self.assertIsNone(ml_kwargs["queryset_or_records"])
+        self.assertEqual(ml_kwargs["excel_path"], "docs/待提交/新数据21507条【备份】.xlsx")
+        self.assertIsNone(mlp_kwargs["queryset_or_records"])
+        self.assertEqual(mlp_kwargs["excel_path"], "docs/待提交/新数据21507条【备份】.xlsx")
+
 
 class ForecastMetricsCommandTest(BaseApiTestCase):
     def test_evaluate_ml_models_prints_mae_rmse_r2(self):
@@ -527,6 +567,128 @@ class ForecastMetricsCommandTest(BaseApiTestCase):
         self.assertIn("MAE", content)
         self.assertIn("RMSE", content)
         self.assertIn("R2", content)
+
+
+class ForecastDLCommandTest(BaseApiTestCase):
+    def setUp(self):
+        super().setUp()
+        if os.path.exists("artifacts"):
+            import shutil
+
+            shutil.rmtree("artifacts")
+
+    def test_prepare_sequence_data_writes_dataset_artifacts(self):
+        call_command("prepare_sequence_data", verbosity=0)
+        self.assertTrue(os.path.exists("artifacts/sequence/drivinglog_sequence_dataset.npz"))
+        self.assertTrue(os.path.exists("artifacts/sequence/drivinglog_sequence_meta.json"))
+
+    @patch("main.management.commands.prepare_sequence_data.prepare_sequence_dataset")
+    def test_prepare_sequence_data_supports_explicit_excel_source(self, mock_prepare_sequence_dataset):
+        mock_prepare_sequence_dataset.return_value = {
+            "metadata": {
+                "source_type": "raw_excel",
+                "sample_count": 12,
+            }
+        }
+
+        call_command(
+            "prepare_sequence_data",
+            "--source",
+            "excel",
+            "--excel-path",
+            "docs/待提交/新数据21507条【备份】.xlsx",
+            verbosity=0,
+        )
+
+        kwargs = mock_prepare_sequence_dataset.call_args.kwargs
+        self.assertIsNone(kwargs["queryset_or_records"])
+        self.assertEqual(kwargs["excel_path"], "docs/待提交/新数据21507条【备份】.xlsx")
+
+    def test_train_dl_model_writes_model_and_metrics_artifacts(self):
+        call_command("train_dl_model", verbosity=0)
+        self.assertTrue(os.path.exists("artifacts/reports/dl_metrics.json"))
+        self.assertTrue(os.path.exists("artifacts/reports/dl_bundle_manifest.json"))
+
+    @patch("main.management.commands.train_dl_model.train_dl_bundle")
+    def test_train_dl_model_supports_explicit_table_source(self, mock_train_dl_bundle):
+        mock_train_dl_bundle.return_value = {
+            "manifest": {
+                "backend": "sklearn_mlp_fallback",
+                "version": "dl-20260412150000",
+            },
+            "metrics": {
+                "power_dl": {"MAE": 0.5},
+                "life_dl": {"MAE": 1.0},
+            },
+        }
+
+        call_command("train_dl_model", "--source", "table", verbosity=0)
+
+        kwargs = mock_train_dl_bundle.call_args.kwargs
+        self.assertEqual(kwargs["queryset_or_records"].model, drivinglog)
+        self.assertIsNone(kwargs["excel_path"])
+
+    def test_compare_models_writes_compare_report(self):
+        call_command("compare_models", verbosity=0)
+        compare_path = "artifacts/reports/model_compare.json"
+        self.assertTrue(os.path.exists(compare_path))
+        with open(compare_path, "r", encoding="utf-8") as compare_file:
+            payload = json.load(compare_file)
+        self.assertIn("ml", payload)
+        self.assertIn("dl", payload)
+
+
+class DrivinglogDisplayRebuildCommandTest(BaseApiTestCase):
+    @patch("main.management.commands.rebuild_drivinglog_from_summary_excel.load_summary_display_records")
+    def test_rebuild_command_replaces_drivinglog_with_summary_excel_rows(self, mock_load_summary_display_records):
+        mock_load_summary_display_records.return_value = [
+            {
+                "vehiclenumber": "SUM-001",
+                "vehiclemodel": "GAC Aion S",
+                "batterycapacity": 70,
+                "batterylife": 72,
+                "accumulatedmileage": 120,
+                "starttime": "2026-04-10 08:00:00",
+                "endtime": "2026-04-10 09:00:00",
+                "averagespeed": 55,
+                "batterylevel": 62,
+                "powerconsumption": 14,
+                "drivingroute": "城市通勤",
+                "collectiontime": "2026-04-10 09:05:00",
+                "rapidaccelerationtimes": 1,
+                "numberofrapiddecelerations": 1,
+                "numberofspeedingincidents": 0,
+                "energysavingsuggestions": "保持平稳驾驶",
+                "drivingbehaviorrating": 86,
+            },
+            {
+                "vehiclenumber": "SUM-002",
+                "vehiclemodel": "Tesla Model 3",
+                "batterycapacity": 78,
+                "batterylife": 65,
+                "accumulatedmileage": 160,
+                "starttime": "2026-04-11 10:00:00",
+                "endtime": "2026-04-11 11:20:00",
+                "averagespeed": 68,
+                "batterylevel": 57,
+                "powerconsumption": 16,
+                "drivingroute": "高架快速路",
+                "collectiontime": "2026-04-11 11:25:00",
+                "rapidaccelerationtimes": 2,
+                "numberofrapiddecelerations": 2,
+                "numberofspeedingincidents": 1,
+                "energysavingsuggestions": "减少急加速",
+                "drivingbehaviorrating": 79,
+            },
+        ]
+
+        call_command("rebuild_drivinglog_from_summary_excel", verbosity=0)
+
+        self.assertEqual(drivinglog.objects.count(), 2)
+        first = drivinglog.objects.get(vehiclenumber="SUM-001")
+        self.assertEqual(first.vehiclemodel, "GAC Aion S")
+        self.assertEqual(first.storeupnum, 0)
+        self.assertEqual(first.discussnum, 0)
 
 
 class ForecastApiTest(BaseApiTestCase):
@@ -612,6 +774,132 @@ class ForecastApiTest(BaseApiTestCase):
         self.assertIn("name", first_scenario)
         self.assertIn("prediction", first_scenario)
         self.assertIn("risklevel", first_scenario["prediction"])
+
+    def test_compare_endpoint_returns_ml_and_dl_sections(self):
+        response = self.client.post(
+            self.api("drivinglogforecast/compare"),
+            data=json.dumps(
+                {
+                    "vehiclemodel": "Model-B",
+                    "batterycapacity": 100,
+                    "accumulatedmileage": 220,
+                    "drivingbehaviorrating": 76,
+                    "drivingroute": "市区-高架混合",
+                    "averagespeed": 64,
+                    "batterylevel": 55,
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertIn("ml", payload["data"])
+        self.assertIn("dl", payload["data"])
+        self.assertIn("comparison", payload["data"])
+        self.assertIn("risklevel", payload["data"]["dl"])
+        self.assertIn("backend", payload["data"]["dl"])
+
+    @patch("main.Drivinglogforecast_v.get_battery_life_artifact_paths")
+    def test_nasa_experiment_endpoint_returns_summary_metrics_and_figures(self, mock_artifact_paths):
+        import tempfile
+
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+
+        artifact_dir = os.path.join(temp_dir.name, "artifacts", "battery_life")
+        figure_dir = os.path.join(artifact_dir, "figures")
+        os.makedirs(figure_dir, exist_ok=True)
+
+        dataset_manifest_path = os.path.join(artifact_dir, "nasa_life_dataset_manifest.json")
+        training_manifest_path = os.path.join(artifact_dir, "nasa_life_training_manifest.json")
+        metrics_path = os.path.join(artifact_dir, "nasa_life_metrics.json")
+        capacity_curve_path = os.path.join(figure_dir, "nasa_capacity_degradation.png")
+        soh_plot_path = os.path.join(figure_dir, "nasa_soh_prediction.png")
+        rul_plot_path = os.path.join(figure_dir, "nasa_rul_prediction.png")
+
+        with open(dataset_manifest_path, "w", encoding="utf-8") as manifest_file:
+            json.dump(
+                {
+                    "dataset": "NASA PCoE Battery Aging",
+                    "source_url": "https://example.com/nasa.zip",
+                    "battery_count": 34,
+                    "sample_count": 5308,
+                    "generated_at": "2026-04-12 14:48:36",
+                },
+                manifest_file,
+                ensure_ascii=False,
+            )
+        with open(training_manifest_path, "w", encoding="utf-8") as manifest_file:
+            json.dump(
+                {
+                    "dataset": "NASA PCoE Battery Aging",
+                    "model_family": "RandomForest(SOH)+GradientBoosting(RUL)",
+                    "split_strategy": "group_holdout_by_battery",
+                    "feature_columns": {
+                        "soh": ["cycle_index", "voltage_mean"],
+                        "rul": ["cycle_index", "capacity"],
+                    },
+                    "train_batteries": ["B0005", "B0006"],
+                    "test_batteries": ["B0007"],
+                    "sample_count": 5308,
+                    "battery_count": 34,
+                    "updated_at": "2026-04-12 15:03:25",
+                },
+                manifest_file,
+                ensure_ascii=False,
+            )
+        with open(metrics_path, "w", encoding="utf-8") as metrics_file:
+            json.dump(
+                {
+                    "soh": {"MAE": 0.0589, "RMSE": 0.115, "R2": 0.6001, "sample_count": 5308},
+                    "rul": {"MAE": 13.33, "RMSE": 24.99, "R2": 0.4497, "sample_count": 5308},
+                },
+                metrics_file,
+                ensure_ascii=False,
+            )
+        for file_path in (capacity_curve_path, soh_plot_path, rul_plot_path):
+            with open(file_path, "wb") as image_file:
+                image_file.write(
+                    base64.b64decode(
+                        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO0pP3sAAAAASUVORK5CYII="
+                    )
+                )
+
+        mock_artifact_paths.return_value = {
+            "artifact_dir": artifact_dir,
+            "figure_dir": figure_dir,
+            "manifest": dataset_manifest_path,
+            "training_manifest": training_manifest_path,
+            "metrics": metrics_path,
+            "capacity_curve": capacity_curve_path,
+            "soh_prediction_plot": soh_plot_path,
+            "rul_prediction_plot": rul_plot_path,
+        }
+
+        response = self.client.get(
+            self.api("drivinglogforecast/nasaExperiment"),
+            **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertTrue(payload["data"]["available"])
+        self.assertEqual(payload["data"]["dataset"]["dataset"], "NASA PCoE Battery Aging")
+        self.assertEqual(payload["data"]["experiment"]["split_strategy"], "group_holdout_by_battery")
+        self.assertIn("soh", payload["data"]["metrics"])
+        self.assertEqual(len(payload["data"]["figures"]), 3)
+        self.assertTrue(payload["data"]["figures"][0]["url"].endswith("/nasaFigure/nasa_capacity_degradation.png"))
+
+        figure_response = self.client.get(
+            self.api("drivinglogforecast/nasaFigure/nasa_capacity_degradation.png"),
+            **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+        )
+        self.assertEqual(figure_response.status_code, 200)
+        self.assertEqual(figure_response["Content-Type"], "image/png")
 
 
 class StoreupFlowTest(BaseApiTestCase):
@@ -780,3 +1068,95 @@ class UserUtilityTest(BaseApiTestCase):
         payload = response.json()
         self.assertEqual(payload["code"], 0)
         self.assertIn("list", payload["data"])
+
+
+class NasaBatteryLifeExperimentTest(TestCase):
+    def test_build_life_frame_computes_soh_and_rul_from_discharge_capacities(self):
+        from main.battery_life.nasa_dataset import build_life_frame
+
+        frame = build_life_frame(
+            [
+                {
+                    "battery_id": "B0005",
+                    "cycle_index": 1,
+                    "capacity": 2.0,
+                    "voltage_mean": 3.7,
+                    "current_mean": -1.5,
+                    "temperature_mean": 28.0,
+                    "duration_seconds": 3200,
+                },
+                {
+                    "battery_id": "B0005",
+                    "cycle_index": 2,
+                    "capacity": 1.6,
+                    "voltage_mean": 3.6,
+                    "current_mean": -1.5,
+                    "temperature_mean": 29.0,
+                    "duration_seconds": 3300,
+                },
+                {
+                    "battery_id": "B0005",
+                    "cycle_index": 3,
+                    "capacity": 1.39,
+                    "voltage_mean": 3.5,
+                    "current_mean": -1.5,
+                    "temperature_mean": 30.0,
+                    "duration_seconds": 3400,
+                },
+            ],
+            eol_capacity=1.4,
+        )
+
+        self.assertEqual(len(frame), 3)
+        self.assertAlmostEqual(frame.iloc[0]["soh"], 1.0)
+        self.assertAlmostEqual(frame.iloc[1]["soh"], 0.8)
+        self.assertEqual(frame.iloc[0]["rul"], 2)
+        self.assertEqual(frame.iloc[1]["rul"], 1)
+        self.assertEqual(frame.iloc[2]["rul"], 0)
+
+    def test_train_real_life_models_writes_soh_and_rul_artifacts(self):
+        import shutil
+        import tempfile
+
+        from main.battery_life.trainers import train_real_life_models
+
+        rows = []
+        for battery_id, start_capacity in (("B0005", 2.0), ("B0006", 1.95)):
+            for cycle_index in range(1, 13):
+                capacity = start_capacity - cycle_index * 0.04
+                rows.append(
+                    {
+                        "battery_id": battery_id,
+                        "cycle_index": cycle_index,
+                        "capacity": capacity,
+                        "soh": capacity / start_capacity,
+                        "rul": 12 - cycle_index,
+                        "voltage_mean": 3.8 - cycle_index * 0.01,
+                        "current_mean": -1.4,
+                        "temperature_mean": 27 + cycle_index * 0.2,
+                        "duration_seconds": 3000 + cycle_index * 10,
+                    }
+                )
+
+        temp_dir = tempfile.mkdtemp()
+        try:
+            result = train_real_life_models(rows, base_dir=temp_dir)
+            self.assertTrue(os.path.exists(result["paths"]["soh_model"]))
+            self.assertTrue(os.path.exists(result["paths"]["rul_model"]))
+            self.assertTrue(os.path.exists(result["paths"]["metrics"]))
+            self.assertTrue(os.path.exists(result["paths"]["capacity_curve"]))
+            self.assertTrue(os.path.exists(result["paths"]["soh_prediction_plot"]))
+            self.assertTrue(os.path.exists(result["paths"]["rul_prediction_plot"]))
+            self.assertEqual(result["manifest"]["dataset"], "NASA PCoE Battery Aging")
+            self.assertIn("soh", result["metrics"])
+            self.assertIn("rul", result["metrics"])
+            self.assertEqual(result["manifest"]["split_strategy"], "group_holdout_by_battery")
+            self.assertNotIn("capacity", result["manifest"]["feature_columns"]["soh"])
+            self.assertIn("capacity", result["manifest"]["feature_columns"]["rul"])
+            self.assertEqual(result["metrics"]["soh"]["evaluation_mode"], "group_holdout")
+            self.assertEqual(result["metrics"]["rul"]["evaluation_mode"], "group_holdout")
+            self.assertTrue(
+                set(result["manifest"]["train_batteries"]).isdisjoint(set(result["manifest"]["test_batteries"]))
+            )
+        finally:
+            shutil.rmtree(temp_dir)

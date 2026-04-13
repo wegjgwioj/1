@@ -132,6 +132,7 @@ redis_host, redis_port, redis_password, redis_db = redis_config_read("config.ini
 dbName=dbName.replace(" ","").strip()
 
 if dbtype == 'mysql':
+    test_collation = 'utf8mb4_unicode_ci' if charset == 'utf8mb4' else 'utf8_general_ci'
     DATABASES = {
         'default': {
             # 'ENGINE': 'django.db.backends.sqlite3',
@@ -150,7 +151,7 @@ if dbtype == 'mysql':
             'charset': charset,
             'TEST': {
                 'CHARSET': charset,
-                'COLLATION': 'utf8_general_ci',
+                'COLLATION': test_collation,
             },
             'CONN_MAX_AGE':60
         },

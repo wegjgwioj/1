@@ -8,6 +8,31 @@ from util.configread import config_read, redis_config_read
 
 
 class ConfigReadTest(unittest.TestCase):
+    def test_config_read_normalizes_mysql_utf8_charset_to_utf8mb4(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            config_path = os.path.join(tempdir, "config.ini")
+            with open(config_path, "w", encoding="utf-8") as config_file:
+                config_file.write(
+                    textwrap.dedent(
+                        """
+                        [sql]
+                        type = mysql
+                        host = 127.0.0.1
+                        port = 3306
+                        user = root
+                        passwd = 123456
+                        db = diandong5k56la1f
+                        charset = utf8
+                        hasHadoop = none
+                        """
+                    ).strip()
+                )
+
+            with patch.dict(os.environ, {}, clear=True):
+                values = config_read(config_path)
+
+            self.assertEqual(values[6], "utf8mb4")
+
     def test_config_read_prefers_dotenv_values_when_process_env_missing(self):
         with tempfile.TemporaryDirectory() as tempdir:
             config_path = os.path.join(tempdir, "config.ini")

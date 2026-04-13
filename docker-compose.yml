@@ -1,4 +1,43 @@
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      args:
+        BASE_IMAGE: ${BACKEND_BASE_IMAGE:-python:3.11-slim}
+        PIP_INDEX_URL: ${BACKEND_PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    container_name: ev-log-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-diandong5k56la1f}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-123456}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-123456}
+      REDIS_DB: ${REDIS_DB:-1}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-false}
+      EMAIL_USE_SSL: ${EMAIL_USE_SSL:-true}
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.qq.com}
+      EMAIL_PORT: ${EMAIL_PORT:-465}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      CONTAINER_TZ: ${CONTAINER_TZ:-Asia/Shanghai}
+      OPEN_ADMIN_ON_RUNSERVER: ${OPEN_ADMIN_ON_RUNSERVER:-0}
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "8080:8080"
+    command: python manage.py runserver --insecure 0.0.0.0:8080 --noreload
+
   db:
     image: mysql:8.0.36
     container_name: ev-log-db

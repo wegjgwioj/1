@@ -16,7 +16,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import StandardScaler
 
 from .evaluation import regression_metrics
-from .feature_engineering import TARGET_COLUMNS, build_training_dataframe, get_feature_columns
+from .feature_engineering import TARGET_COLUMNS, get_feature_columns, resolve_training_dataframe
 
 
 def _make_preprocessor():
@@ -103,8 +103,12 @@ def _train_estimator_set(frame, estimators):
     return models, metrics
 
 
-def train_ml_bundle(queryset_or_records):
-    frame = build_training_dataframe(queryset_or_records)
+def train_ml_bundle(queryset_or_records=None, excel_path=None, source="auto"):
+    frame, source_info = resolve_training_dataframe(
+        queryset_or_records=queryset_or_records,
+        excel_path=excel_path,
+        source=source,
+    )
     if frame.empty or len(frame) < 3:
         raise ValueError("可用于训练的有效样本不足，至少需要 3 条。")
 
@@ -117,11 +121,15 @@ def train_ml_bundle(queryset_or_records):
     if not models:
         raise ValueError("没有满足训练条件的目标列数据。")
 
-    return models, metrics
+    return models, metrics, source_info
 
 
-def train_neural_baseline_bundle(queryset_or_records):
-    frame = build_training_dataframe(queryset_or_records)
+def train_neural_baseline_bundle(queryset_or_records=None, excel_path=None, source="auto"):
+    frame, source_info = resolve_training_dataframe(
+        queryset_or_records=queryset_or_records,
+        excel_path=excel_path,
+        source=source,
+    )
     if frame.empty or len(frame) < 3:
         raise ValueError("可用于训练神经网络基线的有效样本不足，至少需要 3 条。")
 
@@ -138,10 +146,10 @@ def train_neural_baseline_bundle(queryset_or_records):
     models, metrics = _train_estimator_set(frame, estimators)
     if not models:
         raise ValueError("没有满足训练条件的神经网络基线目标列数据。")
-    return models, metrics
+    return models, metrics, source_info
 
 
-def save_ml_artifacts(models, metrics, base_dir, comparison_models=None, comparison_metrics=None):
+def save_ml_artifacts(models, metrics, base_dir, comparison_models=None, comparison_metrics=None, manifest=None):
     artifact_dir = os.path.join(base_dir, "artifacts")
     model_dir = os.path.join(artifact_dir, "models")
     report_dir = os.path.join(artifact_dir, "reports")
@@ -170,5 +178,10 @@ def save_ml_artifacts(models, metrics, base_dir, comparison_models=None, compari
         output_paths["comparison_metrics"] = os.path.join(report_dir, "ml_comparison_metrics.json")
         with open(output_paths["comparison_metrics"], "w", encoding="utf-8") as metrics_file:
             json.dump(comparison_metrics, metrics_file, ensure_ascii=False, indent=2)
+
+    if manifest:
+        output_paths["manifest"] = os.path.join(report_dir, "ml_bundle_manifest.json")
+        with open(output_paths["manifest"], "w", encoding="utf-8") as manifest_file:
+            json.dump(manifest, manifest_file, ensure_ascii=False, indent=2)
 
     return output_paths

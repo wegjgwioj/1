@@ -158,6 +158,9 @@ for i in os.listdir(mainDir):
                         path(r'{}/predict'.format(tableName.lower()),eval("{}_v.{}_predict".format(tableName.capitalize(), tableName.lower()))),
                         path(r'{}/metrics'.format(tableName.lower()),eval("{}_v.{}_metrics".format(tableName.capitalize(), tableName.lower()))),
                         path(r'{}/scenarios'.format(tableName.lower()),eval("{}_v.{}_scenarios".format(tableName.capitalize(), tableName.lower()))),
+                        path(r'{}/compare'.format(tableName.lower()),eval("{}_v.{}_compare".format(tableName.capitalize(), tableName.lower()))),
+                        path(r'{}/nasaExperiment'.format(tableName.lower()),eval("{}_v.{}_nasaExperiment".format(tableName.capitalize(), tableName.lower()))),
+                        path(r'{}/nasaFigure/<str:file_name>'.format(tableName.lower()),eval("{}_v.{}_nasaFigure".format(tableName.capitalize(), tableName.lower()))),
                        ]
                    )
         if tableName.lower()=="users":

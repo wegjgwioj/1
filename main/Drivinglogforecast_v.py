@@ -1,6 +1,7 @@
 #coding:utf-8
 import base64, copy, logging, os, sys, time, xlrd, json, datetime, configparser
-from django.http import JsonResponse
+import mimetypes
+from django.http import HttpResponse, JsonResponse
 from django.apps import apps
 import numbers
 from collections import defaultdict
@@ -9,7 +10,7 @@ from django.db.models import Case, When, IntegerField, F
 from django.forms import model_to_dict
 import requests
 from util.CustomJSONEncoder import CustomJsonEncoder
-from .models import drivinglogforecast
+from .models import drivinglog, drivinglogforecast
 from util.codes import *
 from urllib.parse import unquote
 from util.auth import Auth
@@ -49,6 +50,8 @@ import seaborn as sns
 pd.options.mode.chained_assignment = None  # default='warn'
 
 from .ml.predictors import load_ml_bundle, predict_drivinglog, predict_scenarios
+from .dl import predict_drivinglog_dl
+from .battery_life.nasa_dataset import get_battery_life_artifact_paths
 
 #获取当前文件路径的根目录
 parent_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -61,6 +64,119 @@ mysql_config = {
     'database': dbName,
     'port':port
 }
+
+NASA_EXPERIMENT_FIGURES = [
+    {
+        "key": "capacity_curve",
+        "path_key": "capacity_curve",
+        "title": "容量衰减曲线",
+        "description": "展示不同电池在循环过程中的容量衰减趋势，以及 1.4Ah 退化阈值。",
+    },
+    {
+        "key": "soh_prediction_plot",
+        "path_key": "soh_prediction_plot",
+        "title": "SOH 预测散点图",
+        "description": "对比真实 SOH 与模型预测 SOH，越贴近对角线说明拟合越稳定。",
+    },
+    {
+        "key": "rul_prediction_plot",
+        "path_key": "rul_prediction_plot",
+        "title": "RUL 预测散点图",
+        "description": "对比真实 RUL 与模型预测 RUL，用于说明剩余寿命估计误差分布。",
+    },
+]
+
+
+def _load_json_file(path):
+    if not path or not os.path.exists(path):
+        return {}
+    with open(path, "r", encoding="utf-8") as json_file:
+        return json.load(json_file)
+
+
+def _figure_url(file_name):
+    return f"/{dbName}/drivinglogforecast/nasaFigure/{file_name}"
+
+
+def _nasa_experiment_payload(paths):
+    dataset_manifest = _load_json_file(paths.get("manifest"))
+    training_manifest = _load_json_file(paths.get("training_manifest"))
+    metrics = _load_json_file(paths.get("metrics"))
+    available = bool(dataset_manifest and training_manifest and metrics)
+
+    train_batteries = training_manifest.get("train_batteries") or []
+    test_batteries = training_manifest.get("test_batteries") or []
+    figures = []
+    for figure in NASA_EXPERIMENT_FIGURES:
+        file_path = paths.get(figure["path_key"])
+        if file_path and os.path.exists(file_path):
+            figures.append(
+                {
+                    "key": figure["key"],
+                    "title": figure["title"],
+                    "description": figure["description"],
+                    "url": _figure_url(os.path.basename(file_path)),
+                }
+            )
+
+    return {
+        "available": available,
+        "dataset": dataset_manifest,
+        "experiment": {
+            "dataset": training_manifest.get("dataset") or dataset_manifest.get("dataset"),
+            "model_family": training_manifest.get("model_family"),
+            "split_strategy": training_manifest.get("split_strategy"),
+            "feature_columns": training_manifest.get("feature_columns") or {},
+            "sample_count": training_manifest.get("sample_count") or dataset_manifest.get("sample_count"),
+            "battery_count": training_manifest.get("battery_count") or dataset_manifest.get("battery_count"),
+            "train_battery_count": len(train_batteries),
+            "test_battery_count": len(test_batteries),
+            "updated_at": training_manifest.get("updated_at") or dataset_manifest.get("generated_at"),
+        },
+        "metrics": metrics,
+        "figures": figures,
+        "notes": [
+            "NASA PCoE 电池老化数据用于验证系统已经具备接入公开真实寿命实验、训练模型并输出可解释结果的能力。",
+            "SOH 用来表示当前健康度，RUL 用来表示距离退化终点还剩多少循环，两者可以支撑答辩中的寿命分析说明。",
+            "当前结果适合用作“真实寿命实验”展示，不应直接表述为对任意真实车辆剩余寿命的精准承诺。",
+        ],
+        "limitations": [
+            "实验对象是标准化电池循环数据，不是整车 BMS 长周期时序，所以和实际车辆工况仍有域差异。",
+            "若要进一步逼近真实车辆寿命预测，需要补充车辆级时序、电流倍率、温度环境、充电习惯等长期标签数据。",
+        ],
+    }
+
+
+def drivinglogforecast_nasaExperiment(request):
+    if request.method in ["POST", "GET"]:
+        msg = {'code': normal_code, "msg": mes.normal_code, "data": {}}
+        try:
+            paths = get_battery_life_artifact_paths()
+            payload = _nasa_experiment_payload(paths)
+            if not payload["available"]:
+                msg["msg"] = "NASA 实验产物尚未生成，请先运行数据准备与训练命令。"
+            msg["data"] = payload
+        except Exception as e:
+            msg["code"] = other_code
+            msg["msg"] = str(e)
+        return JsonResponse(msg, encoder=CustomJsonEncoder)
+
+
+def drivinglogforecast_nasaFigure(request, file_name):
+    if request.method in ["POST", "GET"]:
+        paths = get_battery_life_artifact_paths()
+        allowed_files = {
+            os.path.basename(paths[item["path_key"]]): paths[item["path_key"]]
+            for item in NASA_EXPERIMENT_FIGURES
+            if paths.get(item["path_key"])
+        }
+        file_path = allowed_files.get(file_name)
+        if not file_path or not os.path.exists(file_path):
+            return JsonResponse({"code": other_code, "msg": "实验图片不存在"}, status=404)
+        content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+        with open(file_path, "rb") as image_file:
+            return HttpResponse(image_file.read(), content_type=content_type)
+
 def auto_figsize(x_data, base_width=8, base_height=6, width_per_point=0.2):
     """根据数据点数量自动调整画布宽度"""
     num_points = len(x_data)
@@ -128,6 +244,43 @@ def drivinglogforecast_scenarios(request):
             req_dict = (request.session.get("req_dict") or {}).copy()
             force_retrain = str(req_dict.pop("forceRetrain", "false")).lower() in ("1", "true", "yes", "是")
             msg["data"] = predict_scenarios(req_dict, force_retrain=force_retrain)
+        except Exception as e:
+            msg["code"] = other_code
+            msg["msg"] = str(e)
+        return JsonResponse(msg, encoder=CustomJsonEncoder)
+
+
+def drivinglogforecast_compare(request):
+    if request.method in ["POST", "GET"]:
+        msg = {'code': normal_code, "msg": mes.normal_code, "data": {}}
+        try:
+            req_dict = (request.session.get("req_dict") or {}).copy()
+            force_retrain = str(req_dict.pop("forceRetrain", "false")).lower() in ("1", "true", "yes", "是")
+            ml_result = predict_drivinglog(req_dict, persist=False, force_retrain=force_retrain)
+            dl_result = predict_drivinglog_dl(
+                req_dict,
+                force_retrain=force_retrain,
+                queryset_or_records=drivinglog.objects.all(),
+            )
+            ml_score = float(ml_result.get("metrics", {}).get("power", {}).get("MAE", 999)) + float(
+                ml_result.get("metrics", {}).get("life", {}).get("MAE", 999)
+            )
+            dl_score = float(dl_result.get("metrics", {}).get("power_dl", {}).get("MAE", 999)) + float(
+                dl_result.get("metrics", {}).get("life_dl", {}).get("MAE", 999)
+            )
+            msg["data"] = {
+                "ml": ml_result,
+                "dl": dl_result,
+                "comparison": {
+                    "power_delta": round(
+                        float(dl_result["predictedpowerconsumption"]) - float(ml_result["predictedpowerconsumption"]),
+                        2,
+                    ),
+                    "life_delta": int(dl_result["batterylife"]) - int(ml_result["batterylife"]),
+                    "preferred_model": "ml" if ml_score <= dl_score else "dl",
+                },
+                "updated_at": dl_result.get("updated_at") or ml_result.get("updated_at"),
+            }
         except Exception as e:
             msg["code"] = other_code
             msg["msg"] = str(e)

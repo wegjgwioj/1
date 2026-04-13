@@ -35,6 +35,13 @@ def _get_setting(env_values, env_key, fallback):
     return os.getenv(env_key, env_values.get(env_key, fallback))
 
 
+def _normalize_mysql_charset(charset):
+    normalized = (charset or "").strip().lower()
+    if normalized in {"utf8", "utf-8", "utf8mb3"}:
+        return "utf8mb4"
+    return charset
+
+
 def config_read(filePath:str):
     cfg=ConfigParser()
     cfg.read(filePath, encoding="utf-8-sig")
@@ -46,7 +53,7 @@ def config_read(filePath:str):
         user=_get_setting(env_values, "DB_USER", cfg.get('sql','user'))
         passwd=_get_setting(env_values, "DB_PASSWORD", cfg.get('sql','passwd'))
         dbName=_get_setting(env_values, "DB_NAME", cfg.get('sql','db'))
-        charset=_get_setting(env_values, "DB_CHARSET", cfg.get('sql','charset'))
+        charset=_normalize_mysql_charset(_get_setting(env_values, "DB_CHARSET", cfg.get('sql','charset')))
         hasHadoop=_get_setting(env_values, "HAS_HADOOP", cfg.get('sql','hasHadoop'))
         return dbType,host,port,user,passwd,dbName,charset,hasHadoop
     else:

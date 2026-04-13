@@ -1,6 +1,9 @@
 # coding:utf-8
+import os
+
 import pandas as pd
 
+from main.excel_sources import load_raw_telemetry_records, resolve_default_raw_telemetry_excel
 from .data_cleaning import summarize_drivinglog_quality
 
 
@@ -86,9 +89,7 @@ def fill_missing_targets(frame):
     return frame
 
 
-def build_training_dataframe(queryset_or_records):
-    summary = summarize_drivinglog_quality(queryset_or_records)
-    frame = pd.DataFrame(summary["valid_rows"])
+def _finalize_training_frame(frame):
     if frame.empty:
         return frame
 
@@ -107,6 +108,51 @@ def build_training_dataframe(queryset_or_records):
     frame = fill_missing_targets(frame)
     frame = frame.dropna(subset=["batterycapacity", "accumulatedmileage", "drivingbehaviorrating"])
     return frame
+
+
+def build_training_dataframe(queryset_or_records=None, excel_path=None):
+    if excel_path:
+        frame = pd.DataFrame(load_raw_telemetry_records(excel_path=excel_path))
+    else:
+        summary = summarize_drivinglog_quality(queryset_or_records or [])
+        frame = pd.DataFrame(summary["valid_rows"])
+    return _finalize_training_frame(frame)
+
+
+def resolve_training_dataframe(queryset_or_records=None, excel_path=None, source="auto"):
+    default_excel = excel_path or resolve_default_raw_telemetry_excel()
+
+    if source == "excel":
+        frame = build_training_dataframe(excel_path=default_excel)
+        return frame, {
+            "source_type": "raw_excel",
+            "source_excel": default_excel,
+            "sample_count": int(len(frame)),
+        }
+
+    if source == "table":
+        frame = build_training_dataframe(queryset_or_records=queryset_or_records)
+        return frame, {
+            "source_type": "drivinglog_table",
+            "source_excel": "",
+            "sample_count": int(len(frame)),
+        }
+
+    if default_excel and os.path.exists(default_excel):
+        frame = build_training_dataframe(excel_path=default_excel)
+        if not frame.empty and len(frame) >= 3:
+            return frame, {
+                "source_type": "raw_excel",
+                "source_excel": default_excel,
+                "sample_count": int(len(frame)),
+            }
+
+    frame = build_training_dataframe(queryset_or_records=queryset_or_records)
+    return frame, {
+        "source_type": "drivinglog_table",
+        "source_excel": "",
+        "sample_count": int(len(frame)),
+    }
 
 
 def get_feature_columns():

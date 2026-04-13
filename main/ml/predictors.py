@@ -7,6 +7,7 @@ import joblib
 import pandas as pd
 
 from main.models import drivinglog, drivinglogforecast
+from main.excel_sources import resolve_default_raw_telemetry_excel
 
 from .feature_engineering import (
     CATEGORICAL_FEATURES,
@@ -36,10 +37,11 @@ def get_artifact_paths(base_dir=None):
         "life_mlp_model": os.path.join(artifact_dir, "models", "drivinglog_life_mlp_model.pkl"),
         "metrics": os.path.join(artifact_dir, "reports", "ml_metrics.json"),
         "comparison_metrics": os.path.join(artifact_dir, "reports", "ml_comparison_metrics.json"),
+        "manifest": os.path.join(artifact_dir, "reports", "ml_bundle_manifest.json"),
     }
 
 
-def ensure_ml_artifacts(force_retrain=False, queryset=None, base_dir=None):
+def ensure_ml_artifacts(force_retrain=False, queryset=None, base_dir=None, excel_path=None, source="auto"):
     paths = get_artifact_paths(base_dir)
     need_train = force_retrain or not os.path.exists(paths["metrics"])
     need_train = need_train or (
@@ -49,21 +51,44 @@ def ensure_ml_artifacts(force_retrain=False, queryset=None, base_dir=None):
     need_train = need_train or (
         not os.path.exists(paths["power_mlp_model"]) and not os.path.exists(paths["life_mlp_model"])
     )
+    need_train = need_train or not os.path.exists(paths["manifest"])
     if need_train:
-        models, metrics = train_ml_bundle(queryset or drivinglog.objects.all())
-        comparison_models, comparison_metrics = train_neural_baseline_bundle(queryset or drivinglog.objects.all())
+        training_queryset = queryset or drivinglog.objects.all()
+        resolved_excel = excel_path or resolve_default_raw_telemetry_excel(base_dir)
+        models, metrics, source_info = train_ml_bundle(
+            queryset_or_records=training_queryset,
+            excel_path=resolved_excel,
+            source=source,
+        )
+        comparison_models, comparison_metrics, _ = train_neural_baseline_bundle(
+            queryset_or_records=training_queryset,
+            excel_path=resolved_excel,
+            source=source,
+        )
+        timestamp = datetime.now()
         save_ml_artifacts(
             models,
             metrics,
             base_dir or os.getcwd(),
             comparison_models=comparison_models,
             comparison_metrics=comparison_metrics,
+            manifest={
+                **source_info,
+                "updated_at": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                "version": timestamp.strftime("ml-%Y%m%d%H%M%S"),
+            },
         )
     return paths
 
 
-def load_ml_bundle(force_retrain=False, queryset=None, base_dir=None):
-    paths = ensure_ml_artifacts(force_retrain=force_retrain, queryset=queryset, base_dir=base_dir)
+def load_ml_bundle(force_retrain=False, queryset=None, base_dir=None, excel_path=None, source="auto"):
+    paths = ensure_ml_artifacts(
+        force_retrain=force_retrain,
+        queryset=queryset,
+        base_dir=base_dir,
+        excel_path=excel_path,
+        source=source,
+    )
 
     models = {}
     if os.path.exists(paths["power_model"]):
@@ -78,8 +103,16 @@ def load_ml_bundle(force_retrain=False, queryset=None, base_dir=None):
         with open(paths["comparison_metrics"], "r", encoding="utf-8") as metrics_file:
             comparison_metrics = json.load(metrics_file)
 
-    updated_at = datetime.fromtimestamp(os.path.getmtime(paths["metrics"])).strftime("%Y-%m-%d %H:%M:%S")
-    version = datetime.fromtimestamp(os.path.getmtime(paths["metrics"])).strftime("ml-%Y%m%d%H%M%S")
+    manifest = {}
+    if os.path.exists(paths["manifest"]):
+        with open(paths["manifest"], "r", encoding="utf-8") as manifest_file:
+            manifest = json.load(manifest_file)
+    updated_at = manifest.get("updated_at") or datetime.fromtimestamp(os.path.getmtime(paths["metrics"])).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    version = manifest.get("version") or datetime.fromtimestamp(os.path.getmtime(paths["metrics"])).strftime(
+        "ml-%Y%m%d%H%M%S"
+    )
     return {
         "models": models,
         "metrics": metrics,
@@ -87,6 +120,9 @@ def load_ml_bundle(force_retrain=False, queryset=None, base_dir=None):
         "paths": paths,
         "updated_at": updated_at,
         "version": version,
+        "source_type": manifest.get("source_type", "drivinglog_table"),
+        "source_excel": manifest.get("source_excel", ""),
+        "sample_count": manifest.get("sample_count"),
     }
 
 
