@@ -252,6 +252,8 @@ powershell -ExecutionPolicy Bypass -File .\bin\restore_migration_bundle.ps1 -Bun
 - 创建并导入 MySQL 数据库
 - 调用 `bootstrap_local.ps1 -SkipStart` 安装依赖并执行迁移
 
+说明：迁移脚本通过项目 Python 依赖直连 MySQL 导出/导入数据，不要求系统 PATH 中存在 `mysqldump` 或 `mysql` 命令。
+
 恢复完成后，再启动项目：
 
 ```powershell

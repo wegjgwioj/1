@@ -34,6 +34,7 @@ templates/front/admin/vite.out
 media/
 artifacts/
 datasets/
+migration-bundles/
 
 # Local docs / thesis / plan files
 docs/*

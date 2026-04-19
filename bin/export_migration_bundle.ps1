@@ -32,6 +32,51 @@ function Assert-CommandAvailable {
   }
 }
 
+function Resolve-PythonCommand {
+  $venvPython = Join-Path $repoRoot ".venv\Scripts\python.exe"
+  if (Test-Path $venvPython) {
+    return @($venvPython)
+  }
+
+  if (Get-Command "py" -ErrorAction SilentlyContinue) {
+    try {
+      & py -3.11 --version *> $null
+      return @("py", "-3.11")
+    } catch {
+    }
+
+    try {
+      & py --version *> $null
+      return @("py")
+    } catch {
+    }
+  }
+
+  if (Get-Command "python" -ErrorAction SilentlyContinue) {
+    return @("python")
+  }
+
+  throw "Python was not found. Please install Python 3.11 or create .venv first."
+}
+
+function Invoke-ExternalCommand {
+  param(
+    [string]$FilePath,
+    [string[]]$Arguments,
+    [string]$WorkingDirectory = $repoRoot
+  )
+
+  Push-Location $WorkingDirectory
+  try {
+    & $FilePath @Arguments
+    if ($LASTEXITCODE -ne 0) {
+      throw "Command failed: $FilePath $($Arguments -join ' ')"
+    }
+  } finally {
+    Pop-Location
+  }
+}
+
 function Get-EnvFileValues {
   param([string]$Path)
 
@@ -106,16 +151,6 @@ function Resolve-DatabaseSettings {
   }
 }
 
-function New-MySqlAuthArgs {
-  param($Settings)
-
-  $args = @("-h", $Settings.Host, "-P", "$($Settings.Port)", "-u", $Settings.User)
-  if ($Settings.Password -ne "") {
-    $args += "-p$($Settings.Password)"
-  }
-  return $args
-}
-
 function Copy-DirectoryContent {
   param(
     [string]$Source,
@@ -184,8 +219,6 @@ function Copy-RepoSnapshot {
   }
 }
 
-Assert-CommandAvailable -Name "mysqldump"
-
 if (Test-Path $stagingRoot) {
   Remove-Item -LiteralPath $stagingRoot -Recurse -Force
 }
@@ -216,18 +249,20 @@ if (Test-Path $configIniFile) {
 }
 
 Write-Host "Exporting MySQL database..."
-$dumpArgs = New-MySqlAuthArgs -Settings $dbSettings
-$dumpArgs += @(
-  "--default-character-set=$($dbSettings.Charset)",
-  "--single-transaction",
-  "--routines",
-  "--triggers",
-  $dbSettings.Name
-)
-& mysqldump @dumpArgs 1> $dbDumpPath
-if ($LASTEXITCODE -ne 0) {
-  throw "mysqldump failed. Check MySQL connection settings in .env or config.ini."
-}
+$pythonCommand = @(Resolve-PythonCommand)
+$pythonExe = $pythonCommand[0]
+$pythonBaseArgs = if ($pythonCommand.Length -gt 1) { $pythonCommand[1..($pythonCommand.Length - 1)] } else { @() }
+$exportDumpScript = Join-Path $repoRoot "bin\export_mysql_dump.py"
+Invoke-ExternalCommand -FilePath $pythonExe -Arguments ($pythonBaseArgs + @(
+  $exportDumpScript,
+  "--host", $dbSettings.Host,
+  "--port", "$($dbSettings.Port)",
+  "--user", $dbSettings.User,
+  "--password", $dbSettings.Password,
+  "--database", $dbSettings.Name,
+  "--charset", $dbSettings.Charset,
+  "--output", $dbDumpPath
+))
 
 Write-Host "Copying runtime data directories..."
 Copy-DirectoryContent -Source (Join-Path $repoRoot "media") -Destination (Join-Path $runtimeDataDir "media")

@@ -16,11 +16,50 @@ $TargetDir = [System.IO.Path]::GetFullPath($TargetDir)
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("ev-log-restore-" + [guid]::NewGuid().ToString("N"))
 $extractDir = Join-Path $tempRoot "bundle"
 
-function Assert-CommandAvailable {
-  param([string]$Name)
+function Resolve-PythonCommand {
+  param([string]$RepoRoot)
 
-  if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-    throw "Required command was not found: $Name"
+  $venvPython = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+  if (Test-Path $venvPython) {
+    return @($venvPython)
+  }
+
+  if (Get-Command "py" -ErrorAction SilentlyContinue) {
+    try {
+      & py -3.11 --version *> $null
+      return @("py", "-3.11")
+    } catch {
+    }
+
+    try {
+      & py --version *> $null
+      return @("py")
+    } catch {
+    }
+  }
+
+  if (Get-Command "python" -ErrorAction SilentlyContinue) {
+    return @("python")
+  }
+
+  throw "Python was not found. Please install Python 3.11 or run bootstrap_local.ps1 first."
+}
+
+function Invoke-ExternalCommand {
+  param(
+    [string]$FilePath,
+    [string[]]$Arguments,
+    [string]$WorkingDirectory = $TargetDir
+  )
+
+  Push-Location $WorkingDirectory
+  try {
+    & $FilePath @Arguments
+    if ($LASTEXITCODE -ne 0) {
+      throw "Command failed: $FilePath $($Arguments -join ' ')"
+    }
+  } finally {
+    Pop-Location
   }
 }
 
@@ -100,16 +139,6 @@ function Resolve-DatabaseSettings {
   }
 }
 
-function New-MySqlAuthArgs {
-  param($Settings)
-
-  $args = @("-h", $Settings.Host, "-P", "$($Settings.Port)", "-u", $Settings.User)
-  if ($Settings.Password -ne "") {
-    $args += "-p$($Settings.Password)"
-  }
-  return $args
-}
-
 function Copy-DirectoryContent {
   param(
     [string]$Source,
@@ -164,42 +193,49 @@ Copy-DirectoryContent -Source (Join-Path $extractDir "runtime-data\media") -Dest
 Copy-DirectoryContent -Source (Join-Path $extractDir "runtime-data\artifacts") -Destination (Join-Path $TargetDir "artifacts")
 Copy-DirectoryContent -Source (Join-Path $extractDir "runtime-data\datasets") -Destination (Join-Path $TargetDir "datasets")
 
-if (-not $SkipDatabaseImport) {
-  Assert-CommandAvailable -Name "mysql"
-
-  $dbSettings = Resolve-DatabaseSettings -RepoRoot $TargetDir
-  $authArgs = New-MySqlAuthArgs -Settings $dbSettings
-  $collation = if ($dbSettings.Charset -eq "utf8mb4") { "utf8mb4_unicode_ci" } else { "utf8_general_ci" }
-  $createSql = "CREATE DATABASE IF NOT EXISTS ``$($dbSettings.Name)`` DEFAULT CHARACTER SET $($dbSettings.Charset) COLLATE $collation;"
-
-  Write-Host "Creating target database if needed..."
-  & mysql @authArgs --execute=$createSql
-  if ($LASTEXITCODE -ne 0) {
-    throw "mysql failed while creating the target database."
-  }
-
-  $dumpPath = Join-Path $extractDir "db\diandong5k56la1f_full.sql"
-  if (-not (Test-Path $dumpPath)) {
-    throw "Database dump not found in migration bundle: $dumpPath"
-  }
-
-  Write-Host "Importing MySQL dump..."
-  Get-Content -LiteralPath $dumpPath -Encoding UTF8 | & mysql @authArgs $dbSettings.Name
-  if ($LASTEXITCODE -ne 0) {
-    throw "mysql failed while importing the database dump."
-  }
-}
-
 if (-not $SkipBootstrap) {
   $bootstrapScript = Join-Path $TargetDir "bin\bootstrap_local.ps1"
   if (-not (Test-Path $bootstrapScript)) {
     throw "bootstrap_local.ps1 was not restored to the target directory."
   }
 
-  Write-Host "Running dependency bootstrap..."
-  & powershell -ExecutionPolicy Bypass -File $bootstrapScript -SkipStart
-  if ($LASTEXITCODE -ne 0) {
-    throw "bootstrap_local.ps1 failed during restore."
+  Write-Host "Installing dependencies before database restore..."
+  Invoke-ExternalCommand -FilePath "powershell" -Arguments @(
+    "-ExecutionPolicy", "Bypass",
+    "-File", $bootstrapScript,
+    "-SkipStart",
+    "-SkipDatabaseBootstrap"
+  )
+}
+
+if (-not $SkipDatabaseImport) {
+  $dbSettings = Resolve-DatabaseSettings -RepoRoot $TargetDir
+  $dumpPath = Join-Path $extractDir "db\diandong5k56la1f_full.sql"
+  if (-not (Test-Path $dumpPath)) {
+    throw "Database dump not found in migration bundle: $dumpPath"
+  }
+
+  $pythonCommand = @(Resolve-PythonCommand -RepoRoot $TargetDir)
+  $pythonExe = $pythonCommand[0]
+  $pythonBaseArgs = if ($pythonCommand.Length -gt 1) { $pythonCommand[1..($pythonCommand.Length - 1)] } else { @() }
+  $importDumpScript = Join-Path $TargetDir "bin\import_mysql_dump.py"
+
+  Write-Host "Importing MySQL dump..."
+  Invoke-ExternalCommand -FilePath $pythonExe -Arguments ($pythonBaseArgs + @(
+    $importDumpScript,
+    "--host", $dbSettings.Host,
+    "--port", "$($dbSettings.Port)",
+    "--user", $dbSettings.User,
+    "--password", $dbSettings.Password,
+    "--database", $dbSettings.Name,
+    "--charset", $dbSettings.Charset,
+    "--input", $dumpPath
+  ))
+
+  if (-not $SkipBootstrap) {
+    Write-Host "Running Django migrations after database import..."
+    Invoke-ExternalCommand -FilePath $pythonExe -Arguments ($pythonBaseArgs + @("manage.py", "migrate", "--fake-initial", "--noinput"))
+    Invoke-ExternalCommand -FilePath $pythonExe -Arguments ($pythonBaseArgs + @("manage.py", "sync_feature_schema"))
   }
 }
 

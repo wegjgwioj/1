@@ -19,6 +19,8 @@ class StartupScriptsTest(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(PROJECT_ROOT, "bin", "bootstrap_local_db.py")))
         self.assertTrue(os.path.exists(os.path.join(PROJECT_ROOT, "bin", "export_migration_bundle.ps1")))
         self.assertTrue(os.path.exists(os.path.join(PROJECT_ROOT, "bin", "restore_migration_bundle.ps1")))
+        self.assertTrue(os.path.exists(os.path.join(PROJECT_ROOT, "bin", "export_mysql_dump.py")))
+        self.assertTrue(os.path.exists(os.path.join(PROJECT_ROOT, "bin", "import_mysql_dump.py")))
 
     def test_wsgi_runner_bootstraps_project_root_into_sys_path(self):
         content = self._read("bin/run_backend_wsgi.py")
@@ -65,7 +67,7 @@ class StartupScriptsTest(unittest.TestCase):
 
     def test_export_migration_script_packages_database_and_runtime_assets(self):
         content = self._read("bin/export_migration_bundle.ps1")
-        self.assertRegex(content, r"mysqldump")
+        self.assertRegex(content, r"export_mysql_dump\.py")
         self.assertRegex(content, r"media")
         self.assertRegex(content, r"artifacts")
         self.assertRegex(content, r"datasets")
@@ -76,7 +78,7 @@ class StartupScriptsTest(unittest.TestCase):
     def test_restore_migration_script_restores_database_and_bootstraps_dependencies(self):
         content = self._read("bin/restore_migration_bundle.ps1")
         self.assertRegex(content, r"Expand-Archive")
-        self.assertRegex(content, r"mysql")
+        self.assertRegex(content, r"import_mysql_dump\.py")
         self.assertRegex(content, r"bootstrap_local\.ps1")
         self.assertRegex(content, r"media")
         self.assertRegex(content, r"artifacts")

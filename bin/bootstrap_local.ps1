@@ -1,6 +1,7 @@
 param(
   [switch]$PrepareDemoData,
-  [switch]$SkipStart
+  [switch]$SkipStart,
+  [switch]$SkipDatabaseBootstrap
 )
 
 $ErrorActionPreference = "Stop"
@@ -110,21 +111,25 @@ Write-Host "Installing frontend dependencies..."
 # Equivalent to: npm install
 Invoke-ExternalCommand -FilePath "npm" -Arguments @("install") -WorkingDirectory $frontendDir
 
-Write-Host "Bootstrapping local MySQL database..."
-Invoke-ExternalCommand -FilePath $venvPython -Arguments @($dbBootstrapScript)
-
-Write-Host "Running Django migrations..."
-# Equivalent to: python manage.py migrate --fake-initial --noinput
-Invoke-ExternalCommand -FilePath $venvPython -Arguments @("manage.py", "migrate", "--fake-initial", "--noinput")
-
-Write-Host "Syncing feature schema..."
-Invoke-ExternalCommand -FilePath $venvPython -Arguments @("manage.py", "sync_feature_schema")
-
-if ($PrepareDemoData) {
-  Write-Host "Preparing demo data..."
-  Invoke-ExternalCommand -FilePath $venvPython -Arguments @("manage.py", "prepare_demo_data")
+if ($SkipDatabaseBootstrap) {
+  Write-Host "Skipping database bootstrap and migrations."
 } else {
-  Write-Host "Use -PrepareDemoData if you also want to normalize demo data for a presentation run."
+  Write-Host "Bootstrapping local MySQL database..."
+  Invoke-ExternalCommand -FilePath $venvPython -Arguments @($dbBootstrapScript)
+
+  Write-Host "Running Django migrations..."
+  # Equivalent to: python manage.py migrate --fake-initial --noinput
+  Invoke-ExternalCommand -FilePath $venvPython -Arguments @("manage.py", "migrate", "--fake-initial", "--noinput")
+
+  Write-Host "Syncing feature schema..."
+  Invoke-ExternalCommand -FilePath $venvPython -Arguments @("manage.py", "sync_feature_schema")
+
+  if ($PrepareDemoData) {
+    Write-Host "Preparing demo data..."
+    Invoke-ExternalCommand -FilePath $venvPython -Arguments @("manage.py", "prepare_demo_data")
+  } else {
+    Write-Host "Use -PrepareDemoData if you also want to normalize demo data for a presentation run."
+  }
 }
 
 Write-Host "Redis is optional in local mode. The backend will fall back to local memory cache if Redis is unavailable."
