@@ -200,6 +200,74 @@ powershell -ExecutionPolicy Bypass -File .\bin\start_project.ps1 -StartDockerSer
 
 这样做是为了避免重复执行 `db/init/002_feature_patch.sql`、`004_prediction_upgrade.sql` 这类非幂等脚本。
 
+## 迁移到另一台电脑
+
+如果目标不是“重新初始化一个同结构环境”，而是要把当前电脑上的**完整项目状态**一起迁过去，可以直接使用仓库里的迁移脚本。
+
+### 导出当前电脑的完整状态
+
+在当前电脑的项目根目录执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\bin\export_migration_bundle.ps1
+```
+
+默认会在根目录生成 `migration-bundles\*.zip`，迁移包内容包括：
+
+- 项目源码快照
+- 根目录 `.env`
+- `config.ini`
+- MySQL 全量导出 `diandong5k56la1f_full.sql`
+- `media/`
+- `artifacts/`
+- `datasets/`
+
+如果想自定义输出目录或包名，可以执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\bin\export_migration_bundle.ps1 -OutputDir D:\backup -BundleName ev-log-demo
+```
+
+### 在新电脑恢复
+
+先在新电脑安装好：
+
+- `Python 3.11`
+- `Node.js 18+`
+- `MySQL`
+- `Redis`
+
+然后把迁移包拷到新电脑，并在目标目录执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\bin\restore_migration_bundle.ps1 -BundlePath D:\backup\ev-log-demo.zip -TargetDir D:\GraduateProject\Project\1
+```
+
+这个脚本会自动完成：
+
+- 解压迁移包
+- 恢复源码快照
+- 恢复 `.env` 和 `config.ini`
+- 恢复 `media/`、`artifacts/`、`datasets/`
+- 创建并导入 MySQL 数据库
+- 调用 `bootstrap_local.ps1 -SkipStart` 安装依赖并执行迁移
+
+恢复完成后，再启动项目：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\bin\start_project.ps1
+```
+
+### 迁移边界说明
+
+这套脚本的目标是保证**功能完整、业务数据不丢、图片和训练产物不丢**，因此默认不迁：
+
+- Redis 持久化文件
+- 浏览器 `cookie`
+- 浏览器 `localStorage`
+
+这意味着迁移完成后，用户需要重新登录一次，但评论、回复、采集结果、上传图片、训练数据和实验产物都能跟着迁过去。
+
 ## 训练与实验命令
 
 ### 机器学习主模型
