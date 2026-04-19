@@ -18,17 +18,27 @@ class StartupScriptsTest(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(PROJECT_ROOT, "bin", "bootstrap_local.ps1")))
         self.assertTrue(os.path.exists(os.path.join(PROJECT_ROOT, "bin", "bootstrap_local_db.py")))
 
+    def test_wsgi_runner_bootstraps_project_root_into_sys_path(self):
+        content = self._read("bin/run_backend_wsgi.py")
+        self.assertRegex(content, r"import\s+sys")
+        self.assertRegex(content, r"sys\.path\.insert\(0,\s*PROJECT_ROOT\)")
+        self.assertRegex(content, r"PROJECT_ROOT\s*=")
+
     def test_backend_start_script_uses_env_file_and_wsgi_runner(self):
         content = self._read("bin/start_backend.ps1")
         self.assertIn(".env", content)
         self.assertRegex(content, r"run_backend_wsgi\.py")
         self.assertRegex(content, r"APP_BACKEND_PORT")
+        self.assertNotRegex(content, r"\[string\]\$Host\b")
+        self.assertRegex(content, r"\[string\]\$BackendHost\b")
 
     def test_project_start_script_bootstraps_backend_and_frontend(self):
         content = self._read("bin/start_project.ps1")
         self.assertRegex(content, r"start_backend\.ps1")
         self.assertRegex(content, r"npm\s+run\s+serve")
         self.assertRegex(content, r"APP_FRONTEND_PORT")
+        self.assertRegex(content, r"['\"]-BackendHost['\"]")
+        self.assertNotRegex(content, r"['\"]-Host['\"]")
 
     def test_bootstrap_script_bootstraps_windows_local_environment(self):
         content = self._read("bin/bootstrap_local.ps1")

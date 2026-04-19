@@ -88,6 +88,15 @@ export let table = {
 
 export let columns = [
   {
+    columnName: 'vehicleinfo',
+    comments: '关联行车日志',
+    type: '普',
+    hiden: '6',
+    form_type: 'YyText',
+    form_hidden: true,
+    options: [],
+  },
+  {
     columnName: 'nickname',
     comments: '评论用户',
     type: '普',
@@ -101,17 +110,26 @@ export let columns = [
     comments: '评论内容',
     type: '大文本',
     hiden: '',
-    form_type: 'YyTextarea',
+    form_type: 'YyTextArea',
+    form_hidden: false,
+    options: [],
+  },
+  {
+    columnName: 'replydisplay',
+    comments: '回复记录',
+    type: '大文本',
+    hiden: '6',
+    form_type: 'YyTextArea',
     form_hidden: false,
     options: [],
   },
   {
     columnName: 'reply',
-    comments: '回复记录',
+    comments: '原始回复记录',
     type: '大文本',
-    hiden: '6',
-    form_type: 'YyTextarea',
-    form_hidden: false,
+    hiden: '236',
+    form_type: 'YyTextArea',
+    form_hidden: true,
     options: [],
   },
   {

@@ -10,7 +10,7 @@ test('router exposes a dedicated forecast workspace page', () => {
   assert.ok(rootRoute)
   const workspaceRoute = rootRoute.children.find((item) => item.path === '/forecastWorkbench')
   assert.ok(workspaceRoute)
-  assert.equal(workspaceRoute.meta.title, '预测工作台')
+  assert.equal(workspaceRoute.meta.title, '预测分析中心')
 })
 
 test('drivinglogforecast header buttons expose workspace entry', () => {
@@ -26,9 +26,17 @@ test('role menu config contains a direct forecast workspace menu item', async ()
   assert.match(content, /menu:\s*'预测工作台'/)
 })
 
+test('forecast workspace shell exposes the dedicated analysis page copy', async () => {
+  const content = await readFile(new URL('../src/views/forecast-workbench/index.vue', import.meta.url), 'utf-8')
+  assert.match(content, /预测分析中心/)
+  assert.match(content, /电池寿命预测工作台/)
+  assert.match(content, /答辩主分析页面/)
+})
+
 test('forecast workspace view exposes ML and DL comparison summary fields', async () => {
   const content = await readFile(new URL('../src/views/board/Forecast.vue', import.meta.url), 'utf-8')
-  assert.match(content, /同输入 ML \/ DL 结果对比/)
+  assert.match(content, /模型对照/)
+  assert.match(content, /对比摘要/)
   assert.match(content, /DL 后端/)
   assert.match(content, /训练来源/)
   assert.match(content, /样本量/)
@@ -42,8 +50,10 @@ test('forecast workspace view exposes NASA experiment section', async () => {
   assert.match(content, /RUL/)
 })
 
-test('http utility clears local storage with the standard API on auth failures', async () => {
+test('http utility clears admin session on auth failures', async () => {
   const content = await readFile(new URL('../src/utils/http.js', import.meta.url), 'utf-8')
   assert.doesNotMatch(content, /localStorage\.removeItems\(/)
-  assert.match(content, /localStorage\.clear\(\)/)
+  assert.doesNotMatch(content, /localStorage\.clear\(\)/)
+  assert.match(content, /import\s+\{\s*clearAdminSession\s*\}\s+from\s+"@\/utils\/adminSession";/)
+  assert.match(content, /clearAdminSession\(localStorage,\s*sessionStorage\)/)
 })

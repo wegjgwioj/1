@@ -42,6 +42,8 @@ class Xparam(MiddlewareMixin):
                 del req_dict["created"]
             if req_dict.get("t") != None:
                 del req_dict["t"]
+            if req_dict.get("_t") != None:
+                del req_dict["_t"]
             if req_dict.get("1")!=None:
                 req_dict['type']=copy.deepcopy(req_dict.get("1"))
                 del req_dict["1"]

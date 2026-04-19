@@ -25,10 +25,6 @@ function getAuthButtons(tableName) {
     return ['新增', '查看', '删除', '修改']
   }
 
-  if (/^(discuss)/.test(tableName)) {
-    return ['新增', '查看', '删除', '修改']
-  }
-
   let roleMenu = localStorage.getItem('roleMenu')
   if (!roleMenu) {
     return buttons

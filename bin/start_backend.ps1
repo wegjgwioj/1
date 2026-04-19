@@ -1,5 +1,5 @@
 param(
-  [string]$Host = "",
+  [string]$BackendHost = "",
   [int]$Port = 0,
   [switch]$StartDockerServices,
   [switch]$SkipChecks
@@ -39,8 +39,8 @@ if (-not (Test-Path $pythonExe)) {
   throw "未找到虚拟环境 Python：$pythonExe"
 }
 
-if (-not $Host) {
-  $Host = if ($env:APP_BACKEND_HOST) { $env:APP_BACKEND_HOST } else { "127.0.0.1" }
+if (-not $BackendHost) {
+  $BackendHost = if ($env:APP_BACKEND_HOST) { $env:APP_BACKEND_HOST } else { "127.0.0.1" }
 }
 
 if ($Port -le 0) {
@@ -48,7 +48,7 @@ if ($Port -le 0) {
 }
 
 if (-not $env:VITE_API_BASE_URL) {
-  $env:VITE_API_BASE_URL = "http://$Host`:$Port"
+  $env:VITE_API_BASE_URL = "http://$BackendHost`:$Port"
 }
 
 if ($StartDockerServices) {
@@ -67,7 +67,7 @@ if (-not $SkipChecks) {
 
 Write-Host "Backend root: $repoRoot"
 Write-Host "Using .env: $envFile"
-Write-Host "Backend URL: http://$Host`:$Port"
+Write-Host "Backend URL: http://$BackendHost`:$Port"
 Write-Host "Frontend API base: $($env:VITE_API_BASE_URL)"
 
-& $pythonExe (Join-Path $repoRoot "bin\\run_backend_wsgi.py") --host $Host --port $Port
+& $pythonExe (Join-Path $repoRoot "bin\\run_backend_wsgi.py") --host $BackendHost --port $Port

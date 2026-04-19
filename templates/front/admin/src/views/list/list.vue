@@ -1,6 +1,5 @@
 <script setup>
 import '@/style/list.scss'
-import '@/components/TableItem/index'
 
 import { computed, ref, watch, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -259,6 +258,10 @@ async function crawlVehicleKnowledge(button, row) {
     ElMessage.warning('当前记录缺少车型名称，无法采集')
     return
   }
+  const loadingMessage = ElMessage.info({
+    message: `车型知识采集中，请稍候：${vehiclemodel}`,
+    duration: 0,
+  })
   try {
     let res = await crawlVehicleKnowledgeAPI({ vehiclemodel })
     let status = res.data?.crawlstatus || '成功'
@@ -268,6 +271,8 @@ async function crawlVehicleKnowledge(button, row) {
     }
   } catch (error) {
     ElMessage.error(error.msg || error.message || '车型知识采集失败')
+  } finally {
+    loadingMessage.close()
   }
 }
 // 回复评论
@@ -370,6 +375,10 @@ function recommend() {
   fetchData()
 }
 async function crawlVehicleKnowledgeBatch() {
+  const loadingMessage = ElMessage.info({
+    message: '批量采集中，请稍候',
+    duration: 0,
+  })
   try {
     let res = await crawlVehicleKnowledgeBatchAPI()
     let data = res.data || {}
@@ -377,6 +386,8 @@ async function crawlVehicleKnowledgeBatch() {
     fetchData()
   } catch (error) {
     ElMessage.error(error.msg || error.message || '批量采集失败')
+  } finally {
+    loadingMessage.close()
   }
 }
 

@@ -6,8 +6,6 @@
 import { nextTick, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { getColums, getDisable, getInitRuleForm, getInitRules } from '@/utils/form'
-// 注册表单组件
-import '@/components/FormItem/index.js'
 import { getDetailAPI, getInfoAPI, saveAPI, updateAPI } from '@/api/list'
 import {
   crossCalFn,

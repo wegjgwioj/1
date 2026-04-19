@@ -21,6 +21,8 @@ import 'quill/dist/quill.snow.css'
 
 import '@/utils/YyLocalSotrage'
 import registerGlobalData from '@/utils/global'
+import { registerTableItemComponents } from '@/components/TableItem'
+import { registerFormItemComponents } from '@/components/FormItem'
 
 window.ElLoading = ElLoading
 window.ElMessage = ElMessage
@@ -41,8 +43,8 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
 
+registerTableItemComponents(app)
+registerFormItemComponents(app)
 registerGlobalData(app)
 
 app.mount('#app')
-
-export default app

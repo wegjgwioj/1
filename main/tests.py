@@ -1006,8 +1006,144 @@ class DiscussFlowTest(BaseApiTestCase):
         comment.refresh_from_db()
         self.assertEqual(comment.reply, reply_payload)
 
+    def test_reject_blank_comment_content(self):
+        response = self.client.post(
+            self.api("discussdrivinglog/add"),
+            data=json.dumps({"refid": self.log_a.id, "content": "   "}),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertNotEqual(payload["code"], 0)
+        self.assertIn("评论内容不能为空", payload["msg"])
+
+        DiscussDrivinglog = self.get_model_or_fail("discussdrivinglog")
+        self.assertFalse(DiscussDrivinglog.objects.filter(refid=self.log_a.id).exists())
+
+        self.log_a.refresh_from_db()
+        self.assertEqual(getattr(self.log_a, "discussnum", None), 0)
+
+    def test_reject_comment_for_missing_drivinglog(self):
+        response = self.client.post(
+            self.api("discussdrivinglog/add"),
+            data=json.dumps({"refid": 999999999, "content": "关联不存在的行车日志"}),
+            content_type="application/json",
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertNotEqual(payload["code"], 0)
+        self.assertIn("行车日志不存在", payload["msg"])
+
+        DiscussDrivinglog = self.get_model_or_fail("discussdrivinglog")
+        self.assertEqual(DiscussDrivinglog.objects.count(), 0)
+
+    def test_user_comment_page_only_returns_own_comments_with_vehicle_summary(self):
+        another_user = user.objects.create(
+            useraccount="other_user",
+            password="123456",
+            username="其他用户",
+            gender="女",
+            mobilephone="13900000000",
+        )
+        DiscussDrivinglog = self.get_model_or_fail("discussdrivinglog")
+        own_comment = DiscussDrivinglog.objects.create(
+            refid=self.log_a.id,
+            userid=self.front_user.id,
+            nickname=self.front_user.username,
+            content="自己的评论",
+            reply="",
+            isreply=0,
+            status="正常",
+        )
+        other_comment = DiscussDrivinglog.objects.create(
+            refid=self.log_b.id,
+            userid=another_user.id,
+            nickname=another_user.username,
+            content="其他用户的评论",
+            reply="",
+            isreply=0,
+            status="正常",
+        )
+
+        response = self.client.get(
+            self.api("discussdrivinglog/page"),
+            {"page": 1, "limit": 10, "sort": "id", "order": "asc"},
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        user_ids = [item["id"] for item in payload["data"]["list"]]
+        self.assertEqual(user_ids, [own_comment.id])
+        self.assertIn(self.log_a.vehiclenumber, payload["data"]["list"][0]["vehicleinfo"])
+        self.assertEqual(payload["data"]["list"][0]["replydisplay"], "未回复")
+
+        response = self.client.get(
+            self.api("discussdrivinglog/page"),
+            {"page": 1, "limit": 10, "sort": "id", "order": "asc"},
+            **self.auth_headers(table_name="users", params={"id": self.admin_user.id}),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        admin_ids = [item["id"] for item in payload["data"]["list"]]
+        self.assertEqual(admin_ids, [own_comment.id, other_comment.id])
+
+    def test_comment_page_formats_reply_record_for_display(self):
+        reply_payload = json.dumps(
+            [
+                {
+                    "id": 1,
+                    "userid": self.admin_user.id,
+                    "nickname": "管理员",
+                    "avatarurl": "",
+                    "content": "收到，已记录",
+                    "addtime": "2026-04-18 16:30:00",
+                }
+            ],
+            ensure_ascii=False,
+        )
+        DiscussDrivinglog = self.get_model_or_fail("discussdrivinglog")
+        comment = DiscussDrivinglog.objects.create(
+            refid=self.log_a.id,
+            userid=self.front_user.id,
+            nickname=self.front_user.username,
+            content="需要管理员查看",
+            reply=reply_payload,
+            isreply=1,
+            status="正常",
+        )
+
+        response = self.client.get(
+            self.api("discussdrivinglog/detail/%s" % comment.id),
+            **self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertEqual(payload["data"]["reply"], reply_payload)
+        self.assertEqual(payload["data"]["replydisplay"], "管理员：收到，已记录")
+        self.assertIn(self.log_a.vehiclenumber, payload["data"]["vehicleinfo"])
+
 
 class RecommendationTest(BaseApiTestCase):
+    def test_drivinglog_page_ignores_frontend_cache_busting_param(self):
+        response = self.client.get(
+            self.api("drivinglog/page"),
+            {"page": 1, "limit": 20, "sort": "id", "order": "desc", "_t": "1713427200000"},
+            **self.auth_headers(),
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], 0)
+        self.assertIn("list", payload["data"])
+        ids = [item["id"] for item in payload["data"]["list"]]
+        self.assertEqual(ids[:3], [self.log_c.id, self.log_b.id, self.log_a.id])
+
     def test_auto_sort2_prefers_matching_vehiclemodel_or_route(self):
         Storeup = self.get_model_or_fail("storeup")
         Storeup.objects.create(

@@ -6,6 +6,15 @@
 export async function initMenus() {
   let menus = roleMenus
   localStorage.setItem('menus', JSON.stringify(menus))
+
+  const sessionTable = localStorage.getItem('sessionTable')
+  if (sessionTable) {
+    const currentRole = roleMenus.find(item => item.tableName === sessionTable)
+    if (currentRole) {
+      localStorage.setItem('roleMenu', JSON.stringify(currentRole.backMenu))
+      localStorage.setItem('role', currentRole.roleName)
+    }
+  }
 }
 
 const roleMenus = [
@@ -49,9 +58,9 @@ const roleMenus = [
             tableName: 'storeup',
           },
           {
-            allButtons: ['新增', '查看', '删除'],
+            allButtons: ['查看'],
             appFrontIcon: 'cuIcon-message',
-            buttons: ['新增', '查看', '删除'],
+            buttons: ['查看'],
             menu: '评论反馈',
             menuJump: '列表',
             tableName: 'discussdrivinglog',
@@ -119,9 +128,9 @@ const roleMenus = [
         menu: '运行日志',
         child: [
           {
-            allButtons: ['新增', '查看', '修改', '删除', '偏好推荐', '评论', '收藏/取消', '电池容量分析', '电池寿命', '路线分布', '驾驶评分', '节能建议', '导出', '导入', '上传模板', '下载模板', '首页总数', '首页统计'],
+            allButtons: ['新增', '查看', '修改', '删除', '偏好推荐', '评论', '收藏/取消', '采集车型知识', '数据清洗', '电池容量分析', '电池寿命', '路线分布', '驾驶评分', '节能建议', '导出', '导入', '上传模板', '下载模板', '首页总数', '首页统计'],
             appFrontIcon: 'cuIcon-pay',
-            buttons: ['新增', '查看', '修改', '删除', '偏好推荐', '评论', '收藏/取消', '导出', '导入', '首页总数', '首页统计'],
+            buttons: ['新增', '查看', '修改', '删除', '偏好推荐', '评论', '收藏/取消', '采集车型知识', '数据清洗', '导出', '导入', '首页总数', '首页统计'],
             menu: '行车日志',
             menuJump: '列表',
             tableName: 'drivinglog',

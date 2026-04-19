@@ -44,7 +44,7 @@ $backendScript = Join-Path $repoRoot "bin\\start_backend.ps1"
 $backendArgs = @(
   "-ExecutionPolicy", "Bypass",
   "-File", $backendScript,
-  "-Host", $backendHost,
+  "-BackendHost", $backendHost,
   "-Port", $backendPort
 )
 

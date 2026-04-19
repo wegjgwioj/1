@@ -15,6 +15,7 @@ let { api, func, queryName, queryRoles } = configData
 
 const boxRef = ref()
 let chartInstance = null
+let isUnmounted = false
 let isFirstTimeResize = true
 
 // ----------------------------------
@@ -61,6 +62,10 @@ function getHasQuery() {
  * @param { Object } queryData 查询参数
  */
 async function initOrUpdateChart(queryData) {
+  if (!boxRef.value || isUnmounted) {
+    return
+  }
+
   if (!chartInstance) {
     chartInstance = window.echarts.init(boxRef.value)
   }
@@ -80,6 +85,10 @@ async function initOrUpdateChart(queryData) {
 
   // 获取图表选项
   let options = await getInitOptions(data, themeConfig, limitNum, configData)
+  if (!chartInstance || isUnmounted) {
+    return
+  }
+
   // 绘制图表
   chartInstance.setOption(options)
 
@@ -88,10 +97,12 @@ async function initOrUpdateChart(queryData) {
 }
 
 onMounted(() => {
+  isUnmounted = false
   initOrUpdateChart()
 })
 
 onUnmounted(() => {
+  isUnmounted = true
   //  销毁实例
   chartInstance?.dispose()
   chartInstance = null

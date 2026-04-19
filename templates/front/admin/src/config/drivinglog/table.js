@@ -959,9 +959,8 @@ export let headerButtons = [
   },
   {
     title: '数据清洗',
-    name: '清洗',
+    name: '数据清洗',
     key: 'dataClean',
-    isPublic: true,
     iconName: '',
   },
   {
@@ -1017,11 +1016,10 @@ export let tableButtons = [
   },
   {
     title: '采集车型知识',
-    name: '查看',
+    name: '采集车型知识',
     key: 'crawlVehicleKnowledge',
     iconName: 'Refresh',
     className: 'action-edit',
-    isPublic: true,
   },
   {
     title: '查看',
